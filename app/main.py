@@ -7,11 +7,20 @@ import os
 import json
 from pydub import AudioSegment
 from groq import Groq
+import logging
+from typing import List
+
+# Import simplified models
+from src.models.core import Result, Excavator, AluminumSheet, Item
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Audio Processing API",
-    description="Process .wav audio files with Groq transcription",
-    version="1.0.0"
+    title="Briqs - Audio to Text Product Matcher",
+    version="1.0.0",
+    description="Simple audio-to-text transcription with basic product matching"
 )
 
 # Add CORS middleware
@@ -25,11 +34,20 @@ app.add_middleware(
 
 # Initialize Groq client
 try:
-    client = Groq()
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     GROQ_AVAILABLE = True
 except Exception as e:
     print(f"Groq client initialization failed: {e}")
     GROQ_AVAILABLE = False
+
+try:
+    openai_client = openai.OpenAI(
+        base_url="https://api.groq.com/openai/v1",
+        api_key=os.environ.get("GROQ_API_KEY")
+    )
+except Exception as e:
+    print(f"OpenAI Groq client initialization failed: {e}")
+    OPENAI_AVAILABLE = False
 
 def compress_audio(audio_content: bytes) -> bytes:
     """
@@ -86,11 +104,10 @@ def transcribe_audio(audio_bytes: bytes, filename: str) -> dict:
         audio_file.name = filename  # Set filename for the API
         
         # Create transcription using Groq API
-        transcription = client.audio.transcriptions.create(
+        transcription = groq_client.audio.transcriptions.create(
             file=audio_file,
             model="whisper-large-v3-turbo",
-            prompt="Transcribe this audio file accurately",
-            response_format="verbose_json",
+            response_format="text",
             timestamp_granularities=["word", "segment"],
             language="en",
             temperature=0.0
@@ -98,9 +115,9 @@ def transcribe_audio(audio_bytes: bytes, filename: str) -> dict:
         
         return {
             "text": transcription.text,
-            "language": transcription.language,
-            "duration": transcription.duration,
-            "segments": transcription.segments if hasattr(transcription, 'segments') else []
+            "language": "en",
+            "duration": None,
+            "segments": []
         }
         
     except Exception as e:
@@ -112,67 +129,132 @@ def transcribe_audio(audio_bytes: bytes, filename: str) -> dict:
             "segments": []
         }
 
-@app.post("/api/audio/process")
-async def process_audio(audio_file: UploadFile = File(...)):
+
+@app.post("/api/transcribe")
+async def transcribe_endpoint(file: UploadFile = File(...)):
     """
-    Process a .wav audio file with compression and Groq transcription
+    Transcribe audio file and return matched products
     """
     try:
-        # Validate file type
-        if not audio_file.filename.endswith('.wav'):
-            raise HTTPException(status_code=400, detail="Only .wav files are supported")
+        # Read file content
+        audio_content = await file.read()
         
-        # Read audio file
-        audio_content = await audio_file.read()
-        original_size = len(audio_content)
-        
-        # Compress if over 100MB
+        # Compress audio if needed
         compressed_audio = compress_audio(audio_content)
-        final_size = len(compressed_audio)
-        
-        # Check if compression was applied
-        was_compressed = final_size < original_size
-        
-        # Transcribe audio using Groq
-        transcription_result = transcribe_audio(compressed_audio, audio_file.filename)
-        
-        return {
-            "session_id": str(uuid.uuid4()),
-            "filename": audio_file.filename,
-            "original_size": original_size,
-            "final_size": final_size,
-            "was_compressed": was_compressed,
-            "compression_ratio": round(final_size / original_size, 2) if original_size > 0 else 1.0,
-            "transcription": transcription_result,
-            "groq_available": GROQ_AVAILABLE,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except HTTPException:
-        raise
+
+        # Transcribe audio
+        transcription_result = transcribe_audio(compressed_audio, file.filename)
+        text_from_audio = transcription_result["text"]
+        return text_from_audio
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Audio processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/offer")
+async def offer_endpoint(text_input: str):
+    """
+    Process text input and return matched products
+    """
+    try:
+
+        response = openai_client.responses.parse(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            input=[
+                {"role": "system","content":"you are a helpful assistant find the following things, if you do not find these things set them to null"},
+                {"role": "user","content":text_input},
+            ],
+            text_format=Item
+        )
+        result = response.output_parsed
+        item = get_item(result)
+
+        if item:
+            return get_filtered_items(item)
+        
+        return []
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+def load_excavators() -> List[Excavator]:
+    """Loads excavators from mock data."""
+    try:
+        base_path = os.path.dirname(__file__)
+        file_path = os.path.join(base_path, 'src/mock_data/excavator.json')
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            logger.warning(f"Excavator data file not found or empty at {file_path}")
+            return []
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return [Excavator(**item) for item in data]
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        logger.warning(f"Could not load or parse excavator.json: {e}")
+        return []
 
-@app.get("/health")
+def load_aluminum_sheets() -> List[AluminumSheet]:
+    """Loads aluminum sheets from mock data."""
+    try:
+        base_path = os.path.dirname(__file__)
+        file_path = os.path.join(base_path, 'src/mock_data/aluminium.json')
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            logger.warning(f"Aluminium data file not found or empty at {file_path}")
+            return []
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return [AluminumSheet(**item) for item in data]
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        logger.warning(f"Could not load or parse aluminium.json: {e}")
+        return []
+
+
+def get_filtered_items(item):
+    """
+    Filters items from mock data based on the attributes of the input item.
+    """
+    if isinstance(item, Excavator):
+        all_items = load_excavators()
+    elif isinstance(item, AluminumSheet):
+        all_items = load_aluminum_sheets()
+    else:
+        return []
+
+    # Get the fields from the input item that are not None
+    filter_criteria = item.model_dump(exclude_none=True)
+    
+    # If no criteria are provided, return nothing
+    if not filter_criteria:
+        return []
+
+    matched_items = []
+    for db_item in all_items:
+        is_match = True
+        for key, value in filter_criteria.items():
+            db_value = getattr(db_item, key, None)
+            if db_value != value:
+                is_match = False
+                break
+        if is_match:
+            matched_items.append(db_item)
+    
+    return matched_items
+
+
+def get_item(item:Item):
+    if item.excavator:
+        return item.excavator
+    if item.aluminum_sheet:
+        return item.aluminum_sheet
+    return None
+
+@app.get("/api/health")
 async def health_check():
-    """Health check endpoint"""
+    """
+    Health check endpoint
+    """
     return {
-        "status": "healthy", 
-        "service": "audio-processing",
-        "groq_available": GROQ_AVAILABLE
-    }
-
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "Audio Processing API with Groq Transcription",
-        "version": "1.0.0",
-        "supported_formats": [".wav"],
-        "max_size": "100MB (auto-compressed if larger)",
-        "transcription": "Groq Whisper API" if GROQ_AVAILABLE else "Mock (Groq not available)"
+        "status": "healthy",
+        "groq_available": GROQ_AVAILABLE,
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 if __name__ == "__main__":

@@ -1,0 +1,66 @@
+{
+    "Criteria": {
+        "Product": {
+            "Walk-Away-Price (USD)": 172500,
+            "Target Price (USD)": 180000,
+            "Starting Price (USD)": 195000
+        },
+        "Buyer": {
+            "Credit Worthiness": "Mandatory credit check performed by a third-party agency for ALL customers seeking any form of credit terms (i.e., not paying 100% upfront).",
+            "History": "Is this a repeat customer? If so, review their full payment and service history. Only a multi-year, perfect record qualifies for the best terms.",
+            "risk_profile_definition": {
+                "low_risk": "Established company with a multi-year, perfect payment history with us. Strong credit report and a history of multiple equipment purchases.",
+                "medium_risk": "A repeat customer with an excellent, but short (< 2 years), payment history, or an established company with impeccable credit but who is new to us.",
+                "high_risk": "All new businesses, any customer with a limited or poor credit history, or any customer with a single instance of late payment in their history with us."
+            }
+        }
+    },
+    "Negotiation rules": [
+        "Prioritize securing favorable payment terms over achieving the absolute maximum price. A secure deal at a slightly lower price is better than a risky deal at the Target Price.",
+        "When a buyer asks for a concession, always ask for a concession in return that reduces our risk (e.g., larger down payment, shorter terms).",
+        "Always anchor the negotiation with the Target Price. Never reveal the Walk-Away-Price.",
+        "Maintain a professional, firm, and principled tone. Our terms are based on prudent financial management, not a lack of trust.",
+        "If a buyer's initial offer is below the Walk-Away-Price, state that it is significantly below our valuation and we cannot proceed on that basis. Invite a revised offer.",
+        "If a high-risk buyer will not pre-pay 100% or provide an Irrevocable Letter of Credit, politely and firmly end the negotiation. There is no fallback.",
+        "Any request for credit terms beyond Net 30, regardless of buyer risk profile, requires management approval."
+    ],
+    "Tradables": {
+        "Primary Goal": "Secure 100% of the agreed price with minimal to zero payment risk. Achieving the Target Price is secondary to ensuring payment is guaranteed. Building a long-term relationship is contingent on the buyer accepting our risk-mitigation terms.",
+        "Give (Low-cost to us)": [
+            "Free local delivery (within a 50-mile radius, logistics permitting).",
+            "A small toolkit or set of high-quality, company-branded merchandise (e.g., jackets, hats).",
+            "Priority scheduling for their first paid service."
+        ],
+        "Get (High value to us)": [
+            "Pre-payment in full, even from low-risk customers.",
+            "A larger-than-required, non-refundable down payment.",
+            "Agreement to a pre-paid, multi-year service and maintenance contract.",
+            "A formal, signed waiver of consequential damages, limiting our liability strictly to the standard equipment warranty.",
+            "Commitment to act as a formal, positive reference for future potential buyers."
+        ]
+    },
+    "Ideal & Acceptable Terms": {
+        "High risk buyer": {
+            "Payment Terms": {
+                "Ideal": "100% of payment via cleared funds prior to the machine being prepared for delivery.",
+                "Fallback Position": ""
+            },
+            "Collateral for Payment Default": {
+                "Ideal": "Seller retains full legal title until payment is irrevocably confirmed.",
+                "Fallback Position": "An Irrevocable Letter of Credit (ILOC) from a top-tier bank, confirmed by our bank, for 100% of the value. No other terms are acceptable."
+            }
+        },
+        "Medium risk buyer": {
+            "Payment Terms": {
+                "Ideal": "Minimum 50% non-refundable down payment, balance due via cleared funds upon delivery (before offloading).",
+                "Fallback Position": "Increase down payment to 60%. Alternatively, we will hold the 50% down payment and accept an ILOC or Bank Guarantee for the final 50%."
+            }
+        },
+        "Low risk buyer": {
+            "Payment Terms": {
+                "Ideal": "Minimum 10% down payment with an approved Purchase Order, balance due Net 30. Standard warranty and liability terms apply.",
+                "Fallback Position": "If Net 45 terms are requested, it will only be considered in exchange for a 1.5% price increase to cover the cost of capital OR a pre-paid 2-year service contract. Net 60 is not offered."
+            }
+        }
+    }
+}

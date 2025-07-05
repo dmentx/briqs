@@ -1,0 +1,57 @@
+[
+  {
+    "id": "b1e1a1c0-1a2b-4c3d-8e9f-1234567890ab",
+    "name": "Aluminum Sheet 6061-T6",
+    "price": 120.50,
+    "availability": 50,
+    "thickness_mm": 2.0,
+    "total_weight_kg": 24.0,
+    "playbook": "Standard construction use"
+  },
+  {
+    "id": "c2f2b2d1-2b3c-5d4e-9f0a-2345678901bc",
+    "name": "Aluminum Sheet 5052-H32",
+    "price": 98.75,
+    "availability": 30,
+    "thickness_mm": 1.5,
+    "total_weight_kg": 18.5,
+    "playbook": "Marine and chemical applications"
+  },
+  {
+    "id": "d3a3c3e2-3c4d-6e5f-0a1b-3456789012cd",
+    "name": "Aluminum Sheet 3003-H14",
+    "price": 85.00,
+    "availability": 75,
+    "thickness_mm": 1.0,
+    "total_weight_kg": 12.0,
+    "playbook": "General fabrication"
+  },
+  {
+    "id": "e4b4d4f3-4d5e-7f6a-1b2c-4567890123de",
+    "name": "Aluminum Sheet 7075-T651",
+    "price": 210.00,
+    "availability": 10,
+    "thickness_mm": 3.0,
+    "total_weight_kg": 36.0,
+    "playbook": "Aerospace and high-stress parts"
+  },
+  {
+    "id": "f5c5e5a4-5e6f-8a7b-2c3d-5678901234ef",
+    "name": "Aluminum Sheet 2024-T3",
+    "price": 175.25,
+    "availability": 20,
+    "thickness_mm": 2.5,
+    "total_weight_kg": 30.0,
+    "playbook": "Aircraft structures"
+  },
+  {
+    "id": "a6d6f6b5-6f7a-9b8c-3d4e-6789012345fa",
+    "name": "Aluminum Sheet 1100-H14",
+    "price": 70.00,
+    "availability": 100,
+    "thickness_mm": 0.8,
+    "total_weight_kg": 9.5,
+    "playbook": "Food and chemical equipment"
+  }
+]
+

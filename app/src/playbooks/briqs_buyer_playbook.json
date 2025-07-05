@@ -1,0 +1,45 @@
+{
+  "Negotiation Strategy": [
+          "Never reveal your Maximum Budget. Always anchor the negotiation to your Target Purchase Price or lower.",
+          "An aggressive but realistic opening offer can significantly lower the final price.",
+          "Question the value of every seller 'concession'. Unbundle their packages to understand the true cost and benefit of each item.",
+          "Always bundle your requests. For example, 'If you can meet our price, we'll also need you to include the extended warranty and free delivery.'",
+          "Always be professional and polite, but be prepared to walk away if your core requirements on price and terms are not met."
+  ],
+  "Tradables": {
+      "Primary Goal": "Achieve the lowest possible Total Cost of Ownership (TCO). The sticker price is important, but favorable terms, an extended warranty, and included service are equally critical for minimizing long-term expenses.",
+      "Get (High value to us)": [
+          "A significant discount off the list price.",
+          "A comprehensive, multi-year warranty (especially on powertrain and hydraulics).",
+          "The first 2-3 scheduled maintenance services included (parts and labor).",
+          "Favorable payment terms (e.g., Net 60 or Net 90) to improve cash flow.",
+          "Free delivery to our primary worksite."
+      ],
+      "Give (Low-cost to us)": [
+          "A public, positive customer testimonial or case study.",
+          "A commitment to a future parts & service contract (if the rates are competitive).",
+          "Flexibility on the delivery date (if our project schedule allows).",
+          "A slightly larger-than-standard down payment in exchange for a major price discount or extended warranty."
+      ]
+  },
+  "Ideal & Acceptable Terms": {
+    "Price": {
+        "Target Purchase Price (USD)": 160000,
+        "Maximum Budget (USD)": 170000,
+        "Ideal": "A final price at or below our Target Purchase Price of $160,000.",
+        "Fallback Position": "A price up to our Maximum Budget of $170,000, but only if it includes significant 'Gets' like a 3-year warranty."
+    },
+    "Payment Terms": {
+        "Ideal": "Net 60 terms with 0% down payment required.",
+        "Fallback Position": "Net 30 terms with no more than a 5% down payment required to secure the machine."
+    },
+    "Warranty": {
+        "Ideal": "3-year / 3,000-hour comprehensive warranty. First two scheduled services (250hr, 500hr) fully included.",
+        "Fallback Position": "Minimum 2-year / 2,000-hour powertrain warranty. First scheduled service included (labor only)."
+    },
+    "Delivery": {
+        "Ideal": "Free delivery to our site",
+        "Fallback Position": "Delivery cost capped at a pre-agreed, reasonable flat fee."
+    }
+  }
+}
