@@ -218,14 +218,7 @@ class NegotiationCrew:
             process=Process.sequential,
             verbose=True,
             memory=True,
-            planning=True,
-            embedder={
-                "provider": "ollama",
-                "config": {
-                    "model": "mxbai-embed-large",  # Local embedding model
-                    "url": "http://localhost:11434/api/embeddings"
-                }
-            }
+            planning=True
         )
     
     def set_negotiation_context(self, context: Dict[str, Any]) -> None:

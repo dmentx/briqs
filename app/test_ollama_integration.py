@@ -58,26 +58,10 @@ def test_ollama_connectivity():
         return None
 
 def test_embedding_model():
-    """Test if embedding model is available."""
+    """Test embedding model availability (skipped - not needed)."""
     print("\n🔍 Testing embedding model availability...")
-    
-    try:
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            models = response.json()
-            model_names = [model["name"] for model in models.get("models", [])]
-            
-            if "mxbai-embed-large" in model_names:
-                print("✅ mxbai-embed-large embedding model is available")
-                return True
-            else:
-                print("⚠️  mxbai-embed-large not found. Installing...")
-                print("   Run: ollama pull mxbai-embed-large")
-                return False
-        return False
-    except Exception as e:
-        print(f"❌ Error checking embedding model: {e}")
-        return False
+    print("✅ Embedding model not required - skipping")
+    return True
 
 def test_simple_llm_call():
     """Test a simple LLM call to verify Ollama integration."""
@@ -186,7 +170,7 @@ def main():
     
     tests = [
         ("Ollama Connectivity", test_ollama_connectivity),
-        ("Embedding Model", test_embedding_model),
+        ("Embedding Model (Skipped)", test_embedding_model),
         ("Simple LLM Call", test_simple_llm_call),
         ("Crew Instantiation", test_crew_instantiation),
         ("Simple Negotiation", test_simple_negotiation)
@@ -220,7 +204,6 @@ def main():
         print("\n🔧 Setup Instructions:")
         print("   1. Start Ollama: ollama serve")
         print("   2. Pull models: ollama pull llama4:16x17b (or llama3.1:70b)")
-        print("   3. Pull embeddings: ollama pull mxbai-embed-large")
     
     return 0 if failed == 0 else 1
 

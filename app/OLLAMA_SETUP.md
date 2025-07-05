@@ -23,9 +23,6 @@ ollama pull llama4:16x17b
 
 # OR install a smaller fallback model
 ollama pull llama3.1:70b
-
-# Install embedding model for memory system
-ollama pull mxbai-embed-large
 ```
 
 ### 3. Verify Installation
@@ -170,14 +167,7 @@ crew = Crew(
     agents=[...],
     tasks=[...],
     memory=True,
-    max_iter=2,  # Reduce iterations for faster execution
-    embedder={
-        "provider": "ollama",
-        "config": {
-            "model": "mxbai-embed-large",
-            "url": "http://localhost:11434/api/embeddings"
-        }
-    }
+    max_iter=2  # Reduce iterations for faster execution
 )
 ```
 
