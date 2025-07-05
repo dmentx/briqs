@@ -5,6 +5,8 @@ Fast setup and execution for contract negotiations
 """
 
 from crewai import Agent, LLM, Task, Crew, Process
+import json
+import os
 
 # 1. Shared Ollama LLM - auto-detects available model
 def get_ollama_llm():
@@ -33,7 +35,273 @@ def get_ollama_llm():
 
 fast_llm = get_ollama_llm()
 
-# 2. ====== NEGOTIATION AGENTS ======
+# 2. ====== PLAYBOOK LOADING ======
+def load_buyer_playbook(playbook_path="src/knowledge_base/briqs_buyer_playbook.json"):
+    """Load buyer negotiation playbook from JSON file."""
+    try:
+        with open(playbook_path, 'r') as f:
+            playbook = json.load(f)
+        return playbook
+    except FileNotFoundError:
+        print(f"⚠️  Playbook file not found: {playbook_path}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"⚠️  Error parsing playbook JSON: {e}")
+        return None
+
+def load_seller_playbook(playbook_path="src/knowledge_base/briqs_seller_playbook_2.json"):
+    """Load seller negotiation playbook from JSON file."""
+    try:
+        with open(playbook_path, 'r') as f:
+            playbook = json.load(f)
+        return playbook
+    except FileNotFoundError:
+        print(f"⚠️  Seller playbook file not found: {playbook_path}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"⚠️  Error parsing seller playbook JSON: {e}")
+        return None
+
+def build_buyer_task_description(playbook, contract_type="heavy_equipment"):
+    """Build dynamic buyer task description from playbook data."""
+    if not playbook:
+        return "Error: No playbook data available"
+    
+    # Extract key data from playbook
+    strategies = playbook.get("Negotiation Strategy", [])
+    tradables = playbook.get("Tradables", {})
+    terms = playbook.get("Ideal & Acceptable Terms", {})
+    
+    # Build strategy section
+    strategy_text = "\n    ".join([f"{i+1}. {strategy}" for i, strategy in enumerate(strategies)])
+    
+    # Build tradables sections
+    primary_goal = tradables.get("Primary Goal", "")
+    get_items = tradables.get("Get (High value to us)", [])
+    give_items = tradables.get("Give (Low-cost to us)", [])
+    
+    get_text = "\n    - ".join(get_items)
+    give_text = "\n    - ".join(give_items)
+    
+    # Build terms sections
+    price_terms = terms.get("Price", {})
+    payment_terms = terms.get("Payment Terms", {})
+    warranty_terms = terms.get("Warranty", {})
+    delivery_terms = terms.get("Delivery", {})
+    
+    target_price = price_terms.get("Target Purchase Price (USD)", 160000)
+    max_budget = price_terms.get("Maximum Budget (USD)", 170000)
+    
+    description = f"""
+    As the buyer representative, make your opening offer for the {contract_type} following your established negotiation playbook.
+    
+    YOUR BUYER PROFILE:
+    - Credit Worthiness: 8/10 (Strong)
+    - Recurring Customer: Yes (Established relationship)
+    - Target Purchase Price: ${target_price:,}
+    - Maximum Budget: ${max_budget:,} (NEVER REVEAL THIS)
+    
+    NEGOTIATION STRATEGY (From Playbook):
+    {strategy_text}
+    
+    YOUR PRIMARY GOAL: {primary_goal}
+    
+    WHAT TO GET (High value to you):
+    - {get_text}
+    
+    WHAT TO GIVE (Low-cost to you):
+    - {give_text}
+    
+    IDEAL TERMS:
+    - Price: {price_terms.get("Ideal", "At or below target price")}
+    - Payment: {payment_terms.get("Ideal", "Net 60 terms with 0% down payment")}
+    - Warranty: {warranty_terms.get("Ideal", "3-year comprehensive warranty")}
+    - Delivery: {delivery_terms.get("Ideal", "Free delivery to site")}
+    
+    FALLBACK POSITION:
+    - Price: {price_terms.get("Fallback Position", "Up to maximum budget with significant value")}
+    - Payment: {payment_terms.get("Fallback Position", "Net 30 terms with minimal down payment")}
+    - Warranty: {warranty_terms.get("Fallback Position", "Minimum 2-year powertrain warranty")}
+    - Delivery: {delivery_terms.get("Fallback Position", "Reasonable delivery fee")}
+    
+    Make your opening offer based on this strategy. Start aggressive but realistic around your target price or lower.
+    
+    Output: JSON with {{opening_offer_price, offer_justification, payment_terms_requested, warranty_requirements, delivery_requirements, bundled_requests, commitment_level}}
+    """
+    
+    return description
+
+def build_seller_task_description(seller_playbook, buyer_playbook, buyer_risk_profile="low_risk"):
+    """Build dynamic seller task description from playbook data."""
+    if not seller_playbook:
+        return "Error: No seller playbook data available"
+    
+    # Extract key data from seller playbook
+    criteria = seller_playbook.get("Criteria", {})
+    product = criteria.get("Product", {})
+    buyer_criteria = criteria.get("Buyer", {})
+    
+    rules = seller_playbook.get("Negotiation rules", [])
+    tradables = seller_playbook.get("Tradables", {})
+    terms = seller_playbook.get("Ideal & Acceptable Terms", {})
+    
+    # Build pricing structure
+    starting_price = product.get("Starting Price (USD)", 195000)
+    target_price = product.get("Target Price (USD)", 180000)
+    walkaway_price = product.get("Walk-Away-Price (USD)", 172500)
+    
+    # Build rules section
+    rules_text = "\n    ".join([f"{i+1}. {rule}" for i, rule in enumerate(rules)])
+    
+    # Build tradables sections
+    primary_goal = tradables.get("Primary Goal", "")
+    give_items = tradables.get("Give (Low-cost to us)", [])
+    get_items = tradables.get("Get (High value to us)", [])
+    
+    give_text = "\n    - ".join(give_items)
+    get_text = "\n    - ".join(get_items)
+    
+    # Build risk profile definitions
+    risk_definitions = buyer_criteria.get("risk_profile_definition", {})
+    low_risk_def = risk_definitions.get("low_risk", "")
+    medium_risk_def = risk_definitions.get("medium_risk", "")
+    high_risk_def = risk_definitions.get("high_risk", "")
+    
+    # Get terms for current buyer risk profile
+    current_buyer_terms = terms.get(f"{buyer_risk_profile.replace('_', ' ').title()} risk buyer", {})
+    payment_terms = current_buyer_terms.get("Payment Terms", {})
+    
+    # Extract buyer budget info if available
+    buyer_target = "Target price from buyer playbook"
+    buyer_max = "Maximum budget from buyer playbook"
+    if buyer_playbook:
+        buyer_price_terms = buyer_playbook.get("Ideal & Acceptable Terms", {}).get("Price", {})
+        buyer_target = f"${buyer_price_terms.get('Target Purchase Price (USD)', 160000):,}"
+        buyer_max = f"${buyer_price_terms.get('Maximum Budget (USD)', 170000):,}"
+    
+    description = f"""
+    As the seller representative, respond to the buyer's offer following your established negotiation playbook.
+    
+    YOUR SELLER PRICING STRUCTURE:
+    - Starting Price: ${starting_price:,}
+    - Target Price: ${target_price:,}
+    - Walk-Away-Price: ${walkaway_price:,} (NEVER REVEAL THIS)
+    
+    BUYER RISK ASSESSMENT:
+    - Credit Worthiness: 8/10 (Strong credit report)
+    - Recurring Customer: Yes (Established relationship)
+    - RISK PROFILE: {buyer_risk_profile.upper().replace('_', ' ')} RISK
+    
+    RISK PROFILE DEFINITIONS:
+    - Low Risk: {low_risk_def}
+    - Medium Risk: {medium_risk_def}
+    - High Risk: {high_risk_def}
+    
+    NEGOTIATION RULES (From Playbook):
+    {rules_text}
+    
+    YOUR PRIMARY GOAL: {primary_goal}
+    
+    WHAT TO GIVE (Low-cost to you, no future liability):
+    - {give_text}
+    
+    WHAT TO GET (High value to you):
+    - {get_text}
+    
+    {buyer_risk_profile.upper().replace('_', ' ')} RISK BUYER TERMS (Applicable to this buyer):
+    - IDEAL Payment Terms: {payment_terms.get("Ideal", "Standard terms for risk profile")}
+    - FALLBACK: {payment_terms.get("Fallback Position", "Risk-appropriate fallback terms")}
+    
+    BUYER CONTEXT (From their playbook):
+    - Buyer Target Price: {buyer_target} (not revealed to you)
+    - Buyer Maximum Budget: {buyer_max} (not revealed to you)
+    
+    RESPONSE STRATEGY:
+    1. Evaluate buyer's offer against your Walk-Away-Price (${walkaway_price:,})
+    2. If offer is below Walk-Away-Price: Firmly state it's significantly below valuation, invite revised offer
+    3. If offer is above Walk-Away-Price: Consider strategic counter-offer moving toward Target Price
+    4. Emphasize value proposition and justify pricing based on quality/service
+    5. For any concessions requested, ask for risk-reducing concessions in return
+    6. Apply terms appropriate for {buyer_risk_profile.replace('_', ' ')} risk buyer
+    
+    Buyer's offer details: (will be provided by orchestrator)
+    
+    Output: JSON with {{response_decision, counter_offer_price, risk_assessment_summary, value_justification, payment_terms_offered, concessions_requested, willingness_to_negotiate}}
+    """
+    
+    return description
+
+def build_orchestration_task_description(buyer_playbook, seller_playbook, contract_type="heavy_equipment", buyer_risk_profile="low_risk"):
+    """Build dynamic orchestration task description from both playbooks."""
+    
+    # Extract buyer info
+    buyer_target = 160000
+    buyer_max = 170000
+    if buyer_playbook:
+        buyer_price_terms = buyer_playbook.get("Ideal & Acceptable Terms", {}).get("Price", {})
+        buyer_target = buyer_price_terms.get("Target Purchase Price (USD)", 160000)
+        buyer_max = buyer_price_terms.get("Maximum Budget (USD)", 170000)
+    
+    # Extract seller info
+    seller_starting = 195000
+    seller_target = 180000
+    seller_walkaway = 172500
+    if seller_playbook:
+        product = seller_playbook.get("Criteria", {}).get("Product", {})
+        seller_starting = product.get("Starting Price (USD)", 195000)
+        seller_target = product.get("Target Price (USD)", 180000)
+        seller_walkaway = product.get("Walk-Away-Price (USD)", 172500)
+    
+    # Calculate gap
+    gap_percentage = abs(seller_starting - buyer_target) / buyer_target * 100
+    
+    description = f"""
+    As the Negotiation Manager, orchestrate the sequential negotiation process between buyer and seller.
+    
+    CONTEXT (From Playbooks):
+    - Contract type: {contract_type}
+    - Buyer Profile: Credit Worthiness 8/10, Recurring Customer ({buyer_risk_profile.upper().replace('_', ' ')} RISK)
+    - Buyer Target Price: ${buyer_target:,} (Max Budget: ${buyer_max:,} - not revealed to seller)
+    - Seller Starting Price: ${seller_starting:,} (Target: ${seller_target:,}, Walk-Away: ${seller_walkaway:,})
+    - Current Market Gap: Seller starts at ${seller_starting:,}, Buyer targets ${buyer_target:,} ({gap_percentage:.1f}% gap)
+    
+    ORCHESTRATION PROCESS:
+    1. Receive buyer's opening offer from BuyerAgent (based on buyer playbook)
+    2. Present buyer's offer to SellerAgent (without revealing buyer's maximum budget)
+    3. Receive seller's response/counter-offer (based on seller playbook and risk assessment)
+    4. Analyze if gap can be bridged through negotiation
+    5. Facilitate up to 2 additional rounds of back-and-forth if needed
+    6. Determine final outcome: Agreement or Mediation needed
+    
+    NEGOTIATION DYNAMICS TO CONSIDER:
+    - Buyer wants: Target ${buyer_target:,}, warranty, payment terms, free delivery, maintenance included
+    - Seller wants: Target ${seller_target:,}, secure payment terms, risk mitigation, minimal concessions
+    - Overlap Zone: ${seller_walkaway:,} (seller walk-away) to ${buyer_max:,} (buyer max budget)
+    - {buyer_risk_profile.replace('_', ' ').title()} risk buyer profile allows seller to offer appropriate terms
+    
+    AGREEMENT CRITERIA:
+    - Price falls within overlap zone (${seller_walkaway:,} - ${buyer_max:,})
+    - Both parties express acceptance of final terms
+    - Payment terms are mutually acceptable
+    - Key value-adds (warranty, delivery, service) are addressed
+    
+    MEDIATION CRITERIA:
+    - Final price gap remains outside overlap zone after 2 rounds
+    - Fundamental disagreement on critical terms (payment, warranty)
+    - Either party approaches walkaway position
+    - No creative solutions can bridge remaining gaps
+    
+    REQUIRED FINAL CONCLUSION:
+    You MUST end with one of these clear outcomes:
+    - "DEAL SUCCESSFULLY NEGOTIATED" with final agreed terms and price
+    - "MEDIATION REQUIRED" and delegate to MediatorAgent with specific issues
+    
+    Output: JSON with {{buyer_opening_offer, seller_responses, negotiation_rounds, gap_analysis, price_progression, FINAL_CONCLUSION, agreed_terms_or_mediation_reason}}
+    """
+    
+    return description
+
+# 3. ====== NEGOTIATION AGENTS ======
 BuyerAgent = Agent(
     role="Contract Buyer",
     goal="Secure favorable terms within budget constraints while maintaining relationships.",
@@ -63,181 +331,144 @@ MediatorAgent = Agent(
     llm=fast_llm
 )
 
-# 3. ====== SEQUENTIAL NEGOTIATION TASKS ======
-buyer_opening_task = Task(
-    description="""
-    As the buyer representative, make your opening offer for the {contract_type}.
-    
-    CONTEXT:
-    - Your maximum budget: ${buyer_budget}
-    - Seller's asking price: ${seller_price}
-    - Contract requirements: {requirements}
-    
-    STRATEGY:
-    1. Start with a reasonable but strategic opening offer (typically 70-80% of your max budget)
-    2. Justify your offer with market research and budget constraints
-    3. Highlight your commitment to the deal
-    4. Include non-price terms that add value (payment schedule, contract length, etc.)
-    
-    OPENING OFFER GUIDELINES:
-    - Be professional and respectful
-    - Show genuine interest in the deal
-    - Leave room for negotiation
-    - Include rationale for your price point
-    
-    Output: JSON with {opening_offer_price, offer_justification, payment_terms, non_price_benefits, commitment_level}
-    """,
-    agent=BuyerAgent,
-    expected_output="Professional opening offer with price and terms for {contract_type}"
-)
+# 4. ====== SEQUENTIAL NEGOTIATION TASKS ======
+# Note: All tasks will be created dynamically in run_negotiation() using playbook data
 
-seller_response_task = Task(
-    description="""
-    As the seller representative, respond to the buyer's offer presented by the orchestrator.
-    
-    CONTEXT:
-    - Your target price: ${seller_price}
-    - Contract requirements to deliver: {requirements}
-    - Buyer's offer details: (will be provided by orchestrator)
-    
-    RESPONSE STRATEGY:
-    1. Evaluate the buyer's offer against your minimum acceptable terms
-    2. If offer is too low, make a counter-offer that moves toward agreement
-    3. Emphasize value proposition and justify your pricing
-    4. Look for creative ways to bridge the gap (terms, scope, timeline)
-    5. Decide if offer is acceptable or requires negotiation
-    
-    DECISION FRAMEWORK:
-    - If buyer's offer is within 15% of your target: Consider accepting or minor counter
-    - If gap is 15-30%: Make strategic counter-offer 
-    - If gap is >30%: Counter with significant justification or consider walking away
-    
-    Output: JSON with {response_decision, counter_offer_price, value_justification, alternative_terms, willingness_to_negotiate}
-    """,
-    agent=SellerAgent,
-    expected_output="Professional response to buyer's offer with counter-proposal or acceptance"
-)
+# 5. ====== HIERARCHICAL CREW SETUP ======
+# Note: crew will be created dynamically in run_negotiation() with playbook-based tasks
 
-orchestration_task = Task(
-    description="""
-    As the Negotiation Manager, orchestrate the sequential negotiation process.
+# 6. ====== NEGOTIATION SCENARIO ======
+def run_negotiation(contract_type="heavy_equipment", buyer_target_price=160000, seller_starting_price=195000, buyer_risk_profile="low_risk"):
+    """Run a complete negotiation scenario based on buyer and seller playbooks."""
     
-    CONTEXT:
-    - Contract type: {contract_type}
-    - Buyer budget: ${buyer_budget}
-    - Seller price: ${seller_price}
-    - Requirements: {requirements}
+    # Load buyer playbook
+    print("📚 Loading buyer playbook...")
+    buyer_playbook = load_buyer_playbook()
     
-    ORCHESTRATION PROCESS:
-    1. Receive buyer's opening offer from BuyerAgent
-    2. Present buyer's offer to SellerAgent (without revealing buyer's max budget)
-    3. Receive seller's response/counter-offer
-    4. Analyze if gap can be bridged through negotiation
-    5. Facilitate 1-2 rounds of back-and-forth if needed
-    6. Determine final outcome: Agreement or Mediation needed
+    if not buyer_playbook:
+        print("❌ Failed to load buyer playbook! Using fallback values...")
+        buyer_target_price = 160000
+        buyer_max_budget = 170000
+    else:
+        print("✅ Buyer playbook loaded successfully!")
+        # Extract prices from playbook
+        price_terms = buyer_playbook.get("Ideal & Acceptable Terms", {}).get("Price", {})
+        buyer_target_price = price_terms.get("Target Purchase Price (USD)", buyer_target_price)
+        buyer_max_budget = price_terms.get("Maximum Budget (USD)", 170000)
     
-    AGREEMENT CRITERIA:
-    - Both parties express acceptance of terms
-    - Price and terms are within acceptable ranges
-    - No major outstanding issues
+    # Load seller playbook
+    print("📚 Loading seller playbook...")
+    seller_playbook = load_seller_playbook()
     
-    MEDIATION CRITERIA:
-    - Price gap remains >20% after 2 rounds
-    - Fundamental disagreement on key terms
-    - Either party approaching walkaway position
+    if not seller_playbook:
+        print("❌ Failed to load seller playbook! Using fallback values...")
+        seller_starting_price = 195000
+        seller_target_price = 180000
+        seller_walkaway_price = 172500
+    else:
+        print("✅ Seller playbook loaded successfully!")
+        # Extract prices from playbook
+        product = seller_playbook.get("Criteria", {}).get("Product", {})
+        seller_starting_price = product.get("Starting Price (USD)", seller_starting_price)
+        seller_target_price = product.get("Target Price (USD)", 180000)
+        seller_walkaway_price = product.get("Walk-Away-Price (USD)", 172500)
     
-    REQUIRED FINAL CONCLUSION:
-    You MUST end with one of these clear outcomes:
-    - "DEAL SUCCESSFULLY NEGOTIATED" with final agreed terms
-    - "MEDIATION REQUIRED" and delegate to MediatorAgent
+    # Create dynamic tasks using playbook data
+    buyer_task_description = build_buyer_task_description(buyer_playbook, contract_type)
+    seller_task_description = build_seller_task_description(seller_playbook, buyer_playbook, buyer_risk_profile)
+    orchestration_task_description = build_orchestration_task_description(buyer_playbook, seller_playbook, contract_type, buyer_risk_profile)
     
-    Output: JSON with {buyer_offer, seller_response, negotiation_rounds, gap_analysis, FINAL_CONCLUSION, agreed_terms_or_mediation_reason}
-    """,
-    agent=OrchestratorAgent,
-    expected_output="Sequential negotiation management with clear deal conclusion or mediation trigger"
-)
-
-# Optional mediation task - activated by orchestrator when needed
-mediation_task = Task(
-    description="""
-    MEDIATION ACTIVATION: You are called in when buyer and seller cannot reach agreement.
+    buyer_opening_task = Task(
+        description=buyer_task_description,
+        agent=BuyerAgent,
+        expected_output=f"Strategic opening offer based on buyer playbook for {contract_type}"
+    )
     
-    CONTEXT:
-    - Contract type: {contract_type}
-    - Buyer budget: ${buyer_budget}
-    - Seller price: ${seller_price}
-    - Requirements: {requirements}
+    seller_response_task = Task(
+        description=seller_task_description,
+        agent=SellerAgent,
+        expected_output="Strategic response based on seller playbook with risk-appropriate terms"
+    )
     
-    NEUTRAL ANALYSIS:
-    1. Review both positions objectively
-    2. Research market fairness and industry standards
-    3. Identify mutually beneficial solutions
-    4. Propose compromise terms that respect both parties' core needs
-    5. Provide recommendations for deal structure
+    orchestration_task = Task(
+        description=orchestration_task_description,
+        agent=OrchestratorAgent,
+        expected_output="Sequential negotiation management with realistic playbook-based terms and clear conclusion"
+    )
     
-    FINAL DECISION REQUIRED:
-    After analysis, you MUST provide a clear conclusion:
-    - If compromise is viable within buyer's budget: "DEAL AGREED" with final terms
-    - If no viable compromise exists: "NEGOTIATION FAILED" with explanation
+    # Create simplified mediation task (keeping original logic for now)
+    mediation_task = Task(
+        description=f"""
+        MEDIATION ACTIVATION: You are called in when buyer and seller cannot reach agreement.
+        
+        CONTEXT (From Playbooks):
+        - Contract type: {contract_type}
+        - Buyer Profile: Credit Worthiness 8/10, Recurring Customer ({buyer_risk_profile.upper().replace('_', ' ')} RISK)
+        - Buyer Target Price: ${buyer_target_price:,} (Max Budget: ${buyer_max_budget:,})
+        - Seller Starting Price: ${seller_starting_price:,} (Target: ${seller_target_price:,}, Walk-Away: ${seller_walkaway_price:,})
+        - Potential Deal Zone: ${seller_walkaway_price:,} - ${buyer_max_budget:,} (narrow overlap)
+        
+        FINAL DECISION REQUIRED:
+        After analysis, you MUST provide a clear conclusion:
+        - If compromise is viable within constraints: "DEAL AGREED" with final terms
+        - If no viable compromise exists: "NEGOTIATION FAILED" with explanation
+        
+        Output: JSON with {{neutral_assessment, market_analysis, overlap_zone_analysis, recommended_terms, value_add_proposals, FINAL_DECISION, final_terms_or_reason}}
+        """,
+        agent=MediatorAgent,
+        expected_output="Neutral mediation analysis with definitive DEAL AGREED or NEGOTIATION FAILED conclusion based on realistic playbook constraints"
+    )
     
-    MEDIATION PRINCIPLES:
-    - Remain completely neutral and unbiased
-    - Focus on mutual benefit and long-term relationship
-    - Consider market rates and fair value exchange
-    - Propose creative solutions (payment terms, scope adjustments, etc.)
+    # Create crew with dynamic tasks
+    crew = Crew(
+        agents=[BuyerAgent, SellerAgent, MediatorAgent],  # Subordinate agents under manager
+        tasks=[buyer_opening_task, seller_response_task, orchestration_task, mediation_task],
+        manager_agent=OrchestratorAgent,  # Custom manager agent with delegation authority
+        process=Process.hierarchical,  # Enable hierarchical delegation and task management
+        planning=False,  # Disable planning to avoid OpenAI dependency
+        verbose=True,
+        memory=False
+    )
     
-    Output: JSON with {neutral_assessment, market_analysis, recommended_terms, compromise_options, FINAL_DECISION, final_terms_or_reason}
-    """,
-    agent=MediatorAgent,
-    expected_output="Neutral mediation analysis with definitive DEAL AGREED or NEGOTIATION FAILED conclusion"
-)
-
-# 4. ====== HIERARCHICAL CREW SETUP ======
-crew = Crew(
-    agents=[BuyerAgent, SellerAgent, MediatorAgent],  # Subordinate agents under manager
-    tasks=[buyer_opening_task, seller_response_task, orchestration_task, mediation_task],
-    manager_agent=OrchestratorAgent,  # Custom manager agent with delegation authority
-    process=Process.hierarchical,  # Enable hierarchical delegation and task management
-    planning=False,  # Disable planning to avoid OpenAI dependency
-    verbose=True,
-    memory=False
-)
-
-# 5. ====== NEGOTIATION SCENARIO ======
-def run_negotiation(contract_type="software_license", buyer_budget=10000, seller_price=12000):
-    """Run a complete negotiation scenario."""
+    # Calculate realistic gap based on playbook values
+    gap_percentage = abs(seller_starting_price - buyer_target_price) / buyer_target_price * 100
     
     scenario = f"""
-    NEGOTIATION SCENARIO:
+    NEGOTIATION SCENARIO - Heavy Equipment Purchase:
     - Contract Type: {contract_type}
-    - Buyer Budget: ${buyer_budget:,}
-    - Seller Asking Price: ${seller_price:,}
-    - Gap: {abs(seller_price - buyer_budget) / buyer_budget * 100:.1f}%
+    - Buyer Target Price: ${buyer_target_price:,} (Max Budget: ${buyer_max_budget:,} - not revealed)
+    - Seller Starting Price: ${seller_starting_price:,} (Target: ${seller_target_price:,}, Walk-Away: ${seller_walkaway_price:,})
+    - Initial Gap: {gap_percentage:.1f}%
+    - Buyer Profile: Credit Worthiness 8/10, Recurring Customer ({buyer_risk_profile.upper().replace('_', ' ')} RISK)
+    - Playbook Sources: 
+      * Buyer: {'JSON loaded successfully' if buyer_playbook else 'Fallback values used'}
+      * Seller: {'JSON loaded successfully' if seller_playbook else 'Fallback values used'}
     
     Requirements:
-    - License Duration: 2 years
-    - Support Level: Premium
-    - User Count: 100
-    - Payment Terms: Quarterly
+    - Equipment: Heavy construction machinery
+    - Warranty: 3-year comprehensive preferred
+    - Payment Terms: Net 60 preferred (Net 30 acceptable)
+    - Delivery: Free delivery preferred
+    - Service: First 2-3 maintenance services included preferred
     
     Begin negotiation process...
     """
     
-    print("🎭 Multi-Agent Contract Negotiation")
-    print("=" * 50)
+    print("🎭 Multi-Agent Contract Negotiation - Heavy Equipment")
+    print("=" * 60)
     print(scenario)
-    print("=" * 50)
+    print("=" * 60)
     
     # Set the negotiation context as inputs
     inputs = {
         "contract_type": contract_type,
-        "buyer_budget": buyer_budget,
-        "seller_price": seller_price,
+        "buyer_risk_profile": buyer_risk_profile,
         "requirements": {
-            "license_duration": "2 years",
-            "support_level": "premium", 
-            "user_count": 100,
-            "payment_terms": "quarterly"
+            "equipment_type": "heavy_construction_machinery",
+            "warranty_preferred": "3-year comprehensive",
+            "payment_terms_preferred": "Net 60",
+            "delivery_preferred": "free_delivery",
+            "service_preferred": "first_2-3_maintenance_included"
         }
     }
     
@@ -245,7 +476,7 @@ def run_negotiation(contract_type="software_license", buyer_budget=10000, seller
     result = crew.kickoff(inputs=inputs)
     
     print("\n🎯 NEGOTIATION COMPLETE!")
-    print("=" * 50)
+    print("=" * 60)
     
     # Try to extract and display the final decision clearly
     try:
@@ -277,22 +508,12 @@ def run_negotiation(contract_type="software_license", buyer_budget=10000, seller
     return result
 
 if __name__ == "__main__":
-    # Test different negotiation scenarios
-    print("🚀 Testing Ollama Integration with Multiple Scenarios...")
+    # Test negotiation scenario based on actual playbook values
+    print("🚀 Testing Ollama Integration with Realistic Playbook Scenarios...")
     
-    # Test 1: Successful deal scenario (small gap)
-    print("\n📋 Scenario 1: Likely Success - Software License")
-    print("Expected: DEAL SUCCESSFULLY NEGOTIATED")
-    run_negotiation("software_license", 10000, 10500)  # 5% gap - should succeed
+    print("\n📋 Standard Playbook - Heavy Equipment Purchase (Low Risk Buyer)")
+    print("Expected: Either negotiated deal or mediation (depends on negotiation skill)")
+    print("Buyer wants $160K, Seller starts at $195K, overlap zone: $172.5K-$170K")
+    run_negotiation("heavy_equipment", 160000, 195000, "low_risk")
     
-    # Test 2: Moderate gap scenario (requires negotiation)
-    print("\n📋 Scenario 2: Moderate Gap - Consulting Services")  
-    print("Expected: Either deal or mediation depending on negotiation")
-    run_negotiation("consulting_services", 15000, 17500)  # 16% gap - could go either way
-    
-    # Test 3: Challenging gap scenario (likely needs mediation)
-    print("\n📋 Scenario 3: Challenging Gap - Equipment Purchase")
-    print("Expected: MEDIATION REQUIRED")
-    run_negotiation("equipment_purchase", 25000, 35000)  # 40% gap - likely needs mediation
-    
-    print("\n✅ All scenarios complete!") 
+    print("\n✅ Playbook-based scenario complete!")
