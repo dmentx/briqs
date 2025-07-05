@@ -110,6 +110,7 @@ dependencies = [
     { name = "crewai" },
     { name = "groq" },
     { name = "pyyaml" },
+    { name = "requests" },
 ]
 
 [package.metadata]
@@ -117,6 +118,7 @@ requires-dist = [
     { name = "crewai", specifier = ">=0.140.0" },
     { name = "groq", specifier = ">=0.29.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "requests", specifier = ">=2.32.4" },
 ]
 
 [[package]]

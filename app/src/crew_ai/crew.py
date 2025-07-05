@@ -8,7 +8,7 @@ import yaml
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew, Process, LLM
 from crewai.project import CrewBase, agent, crew, task
 
 
@@ -53,6 +53,47 @@ class NegotiationCrew:
         tasks_config_path = current_dir / self.tasks_config
         with open(tasks_config_path, 'r') as f:
             self.tasks_config_data = yaml.safe_load(f)
+            
+        # Initialize Ollama LLM
+        self._setup_ollama_llm()
+    
+    def _setup_ollama_llm(self):
+        """Setup Ollama LLM for local inference."""
+        import requests
+        
+        # Try to detect available models
+        try:
+            response = requests.get("http://localhost:11434/api/tags", timeout=3)
+            if response.status_code == 200:
+                models = response.json()
+                model_names = [model["name"] for model in models.get("models", [])]
+                
+                # Check for preferred models in order
+                if "llama4:16x17b" in model_names:
+                    self.ollama_llm = LLM(model="ollama/llama4:16x17b", base_url="http://localhost:11434")
+                    print("✅ Using Ollama model: llama4:16x17b")
+                elif any("llama3.1" in name and "70b" in name for name in model_names):
+                    model_name = next(name for name in model_names if "llama3.1" in name and "70b" in name)
+                    self.ollama_llm = LLM(model=f"ollama/{model_name}", base_url="http://localhost:11434")
+                    print(f"✅ Using Ollama model: {model_name}")
+                elif any("llama" in name for name in model_names):
+                    model_name = next(name for name in model_names if "llama" in name)
+                    self.ollama_llm = LLM(model=f"ollama/{model_name}", base_url="http://localhost:11434")
+                    print(f"⚠️  Using fallback Ollama model: {model_name}")
+                else:
+                    # No models available, use default but warn user
+                    self.ollama_llm = LLM(model="ollama/llama3.1:70b", base_url="http://localhost:11434")
+                    print("⚠️  No Llama models detected. Using llama3.1:70b as default.")
+                    print("   Install with: ollama pull llama3.1:70b")
+            else:
+                raise Exception("Ollama API not responding")
+                
+        except Exception as e:
+            # Fallback if Ollama detection fails
+            self.ollama_llm = LLM(model="ollama/llama3.1:70b", base_url="http://localhost:11434")
+            print(f"⚠️  Could not detect Ollama models ({e}). Using default llama3.1:70b")
+            print("   Ensure Ollama is running: ollama serve")
+            print("   Install model: ollama pull llama3.1:70b or ollama pull llama4:16x17b")
         
     @agent
     def buyer_agent(self) -> Agent:
@@ -65,7 +106,8 @@ class NegotiationCrew:
             verbose=config.get('verbose', True),
             memory=config.get('memory', True),
             allow_delegation=config.get('allow_delegation', False),
-            max_iter=config.get('max_iter', 3)
+            max_iter=config.get('max_iter', 3),
+            llm=self.ollama_llm  # Use local Ollama LLM
         )
     
     @agent
@@ -79,7 +121,8 @@ class NegotiationCrew:
             verbose=config.get('verbose', True),
             memory=config.get('memory', True),
             allow_delegation=config.get('allow_delegation', False),
-            max_iter=config.get('max_iter', 3)
+            max_iter=config.get('max_iter', 3),
+            llm=self.ollama_llm  # Use local Ollama LLM
         )
     
     @agent
@@ -93,7 +136,8 @@ class NegotiationCrew:
             verbose=config.get('verbose', True),
             memory=config.get('memory', True),
             allow_delegation=config.get('allow_delegation', True),
-            max_iter=config.get('max_iter', 5)
+            max_iter=config.get('max_iter', 5),
+            llm=self.ollama_llm  # Use local Ollama LLM
         )
     
     @agent
@@ -107,7 +151,8 @@ class NegotiationCrew:
             verbose=config.get('verbose', True),
             memory=config.get('memory', True),
             allow_delegation=config.get('allow_delegation', False),
-            max_iter=config.get('max_iter', 2)
+            max_iter=config.get('max_iter', 2),
+            llm=self.ollama_llm  # Use local Ollama LLM
         )
     
     @task
@@ -175,10 +220,10 @@ class NegotiationCrew:
             memory=True,
             planning=True,
             embedder={
-                "provider": "groq",
+                "provider": "ollama",
                 "config": {
-                    "model": "llama3-8b-8192",
-                    "temperature": 0.7
+                    "model": "mxbai-embed-large",  # Local embedding model
+                    "url": "http://localhost:11434/api/embeddings"
                 }
             }
         )

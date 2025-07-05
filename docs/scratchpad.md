@@ -35,7 +35,7 @@ Building a sophisticated four-agent negotiation system where:
 3. **Phase 3**: Advanced features (memory, learning, complex scenarios)
 
 ## Current Task Reference
-- **Active Task**: [Multi-Agent Negotiation System](implementation-plan/multi-agent-negotiation-system.md) ✅ **PLANNING COMPLETE**
+- **Active Task**: [Multi-Agent Negotiation System](implementation-plan/multi-agent-negotiation-system.md) ✅ **TASK 1 COMPLETE**
 
 ## Planning Deliverables Created ☕
 - **Project Scratchpad**: Initial brainstorming and architectural insights
@@ -51,4 +51,8 @@ Building a sophisticated four-agent negotiation system where:
 - [2024-12-25] MCP Context7 is excellent for gathering comprehensive framework documentation
 - [2024-12-25] Multi-agent systems require careful orchestration and process design
 - [2024-12-25] **MAJOR INSIGHT**: Separate process management from conflict resolution - orchestrator controls flow, mediator resolves deadlocks
-- [2024-12-25] Four-agent architecture provides better separation of concerns than three-agent design 
+- [2024-12-25] Four-agent architecture provides better separation of concerns than three-agent design
+- [2024-12-25] **CONFIGURATION LOADING**: CrewAI requires explicit YAML loading and proper agent/task instantiation - cannot use config file paths directly
+- [2024-12-25] **TESTING EARLY**: Always create architecture validation tests before building complex features
+- [2024-12-25] **INCREMENTAL DEVELOPMENT**: Fix one component at a time and test after each change
+- [2024-12-25] **YAML STRUCTURE**: Agent configurations must include role, goal, backstory explicitly; task configurations need description, expected_output, and agent reference 
