@@ -63,52 +63,64 @@ MediatorAgent = Agent(
     llm=fast_llm
 )
 
-# 3. ====== HIERARCHICAL NEGOTIATION TASKS ======
-buyer_negotiation_task = Task(
+# 3. ====== SEQUENTIAL NEGOTIATION TASKS ======
+buyer_opening_task = Task(
     description="""
-    As the buyer representative, develop a comprehensive negotiation position for the {contract_type}.
+    As the buyer representative, make your opening offer for the {contract_type}.
     
     CONTEXT:
     - Your maximum budget: ${buyer_budget}
     - Seller's asking price: ${seller_price}
     - Contract requirements: {requirements}
     
-    DELIVERABLES:
-    1. Initial negotiation position with rationale
-    2. Identify your red lines (non-negotiable items)
-    3. Areas where you have flexibility
-    4. Risk assessment and mitigation strategies
+    STRATEGY:
+    1. Start with a reasonable but strategic opening offer (typically 70-80% of your max budget)
+    2. Justify your offer with market research and budget constraints
+    3. Highlight your commitment to the deal
+    4. Include non-price terms that add value (payment schedule, contract length, etc.)
     
-    Output: Detailed JSON with {position, budget_analysis, red_lines, flexibility_areas, risk_factors}
+    OPENING OFFER GUIDELINES:
+    - Be professional and respectful
+    - Show genuine interest in the deal
+    - Leave room for negotiation
+    - Include rationale for your price point
+    
+    Output: JSON with {opening_offer_price, offer_justification, payment_terms, non_price_benefits, commitment_level}
     """,
     agent=BuyerAgent,
-    expected_output="Comprehensive buyer negotiation strategy for {contract_type}"
+    expected_output="Professional opening offer with price and terms for {contract_type}"
 )
 
-seller_negotiation_task = Task(
+seller_response_task = Task(
     description="""
-    As the seller representative, create a strategic sales approach for the {contract_type}.
+    As the seller representative, respond to the buyer's offer presented by the orchestrator.
     
     CONTEXT:
     - Your target price: ${seller_price}
-    - Buyer's stated budget: ${buyer_budget}
-    - Requirements to deliver: {requirements}
+    - Contract requirements to deliver: {requirements}
+    - Buyer's offer details: (will be provided by orchestrator)
     
-    DELIVERABLES:
-    1. Value-based pricing strategy with justification
-    2. Key value propositions and differentiators
-    3. Potential concession areas and alternatives
-    4. Minimum acceptable terms (walkaway point)
+    RESPONSE STRATEGY:
+    1. Evaluate the buyer's offer against your minimum acceptable terms
+    2. If offer is too low, make a counter-offer that moves toward agreement
+    3. Emphasize value proposition and justify your pricing
+    4. Look for creative ways to bridge the gap (terms, scope, timeline)
+    5. Decide if offer is acceptable or requires negotiation
     
-    Output: Detailed JSON with {pricing_strategy, value_proposition, concession_options, walkaway_terms}
+    DECISION FRAMEWORK:
+    - If buyer's offer is within 15% of your target: Consider accepting or minor counter
+    - If gap is 15-30%: Make strategic counter-offer 
+    - If gap is >30%: Counter with significant justification or consider walking away
+    
+    Output: JSON with {response_decision, counter_offer_price, value_justification, alternative_terms, willingness_to_negotiate}
     """,
     agent=SellerAgent,
-    expected_output="Comprehensive seller negotiation strategy for {contract_type}"
+    expected_output="Professional response to buyer's offer with counter-proposal or acceptance"
 )
 
-final_negotiation_task = Task(
+orchestration_task = Task(
     description="""
-    As the Negotiation Manager, coordinate the final deal between buyer and seller positions.
+    As the Negotiation Manager, orchestrate the sequential negotiation process.
     
     CONTEXT:
     - Contract type: {contract_type}
@@ -116,25 +128,33 @@ final_negotiation_task = Task(
     - Seller price: ${seller_price}
     - Requirements: {requirements}
     
-    PROCESS:
-    1. Review both buyer and seller positions
-    2. Identify the negotiation gap and key issues
-    3. Facilitate resolution through strategic guidance
-    4. If positions are irreconcilable, delegate to mediator
-    5. Finalize deal terms or recommend next steps
+    ORCHESTRATION PROCESS:
+    1. Receive buyer's opening offer from BuyerAgent
+    2. Present buyer's offer to SellerAgent (without revealing buyer's max budget)
+    3. Receive seller's response/counter-offer
+    4. Analyze if gap can be bridged through negotiation
+    5. Facilitate 1-2 rounds of back-and-forth if needed
+    6. Determine final outcome: Agreement or Mediation needed
     
-    DECISION CRITERIA for Mediation:
-    - Price gap > 20% with no movement after 2 rounds
+    AGREEMENT CRITERIA:
+    - Both parties express acceptance of terms
+    - Price and terms are within acceptable ranges
+    - No major outstanding issues
+    
+    MEDIATION CRITERIA:
+    - Price gap remains >20% after 2 rounds
     - Fundamental disagreement on key terms
     - Either party approaching walkaway position
     
-    MEDIATION DELEGATION:
-    If mediation is needed, delegate to the MediatorAgent to provide neutral analysis and recommendations.
+    REQUIRED FINAL CONCLUSION:
+    You MUST end with one of these clear outcomes:
+    - "DEAL SUCCESSFULLY NEGOTIATED" with final agreed terms
+    - "MEDIATION REQUIRED" and delegate to MediatorAgent
     
-    Output: JSON with {final_deal, gap_analysis, resolution_strategy, mediation_activated}
+    Output: JSON with {buyer_offer, seller_response, negotiation_rounds, gap_analysis, FINAL_CONCLUSION, agreed_terms_or_mediation_reason}
     """,
     agent=OrchestratorAgent,
-    expected_output="Final negotiation outcome with deal terms or escalation plan"
+    expected_output="Sequential negotiation management with clear deal conclusion or mediation trigger"
 )
 
 # Optional mediation task - activated by orchestrator when needed
@@ -155,25 +175,30 @@ mediation_task = Task(
     4. Propose compromise terms that respect both parties' core needs
     5. Provide recommendations for deal structure
     
+    FINAL DECISION REQUIRED:
+    After analysis, you MUST provide a clear conclusion:
+    - If compromise is viable within buyer's budget: "DEAL AGREED" with final terms
+    - If no viable compromise exists: "NEGOTIATION FAILED" with explanation
+    
     MEDIATION PRINCIPLES:
     - Remain completely neutral and unbiased
     - Focus on mutual benefit and long-term relationship
     - Consider market rates and fair value exchange
     - Propose creative solutions (payment terms, scope adjustments, etc.)
     
-    Output: JSON with {neutral_assessment, market_analysis, recommended_terms, compromise_options}
+    Output: JSON with {neutral_assessment, market_analysis, recommended_terms, compromise_options, FINAL_DECISION, final_terms_or_reason}
     """,
     agent=MediatorAgent,
-    expected_output="Neutral mediation analysis with compromise recommendations"
+    expected_output="Neutral mediation analysis with definitive DEAL AGREED or NEGOTIATION FAILED conclusion"
 )
 
 # 4. ====== HIERARCHICAL CREW SETUP ======
 crew = Crew(
     agents=[BuyerAgent, SellerAgent, MediatorAgent],  # Subordinate agents under manager
-    tasks=[buyer_negotiation_task, seller_negotiation_task, final_negotiation_task, mediation_task],
+    tasks=[buyer_opening_task, seller_response_task, orchestration_task, mediation_task],
     manager_agent=OrchestratorAgent,  # Custom manager agent with delegation authority
     process=Process.hierarchical,  # Enable hierarchical delegation and task management
-    planning=True,  # Enable planning for better task coordination
+    planning=False,  # Disable planning to avoid OpenAI dependency
     verbose=True,
     memory=False
 )
@@ -221,18 +246,53 @@ def run_negotiation(contract_type="software_license", buyer_budget=10000, seller
     
     print("\n🎯 NEGOTIATION COMPLETE!")
     print("=" * 50)
+    
+    # Try to extract and display the final decision clearly
+    try:
+        result_str = str(result)
+        
+        # Check for different outcome types
+        if "DEAL SUCCESSFULLY NEGOTIATED" in result_str:
+            print("✅ OUTCOME: DEAL SUCCESSFULLY NEGOTIATED")
+            print("🎉 The negotiation was successful! Both parties reached agreement.")
+        elif "MEDIATION REQUIRED" in result_str:
+            print("🟡 OUTCOME: MEDIATION REQUIRED")
+            print("⚖️  The negotiation gap was too large - escalated to mediation.")
+        elif "DEAL AGREED" in result_str:
+            print("✅ OUTCOME: DEAL AGREED")
+            print("🎉 Successful agreement reached!")
+        elif "NEGOTIATION FAILED" in result_str:
+            print("❌ OUTCOME: NEGOTIATION FAILED")
+            print("💔 No agreement could be reached.")
+        else:
+            print("⚠️  OUTCOME: UNCLEAR - Check detailed results")
+            print("🔍 The outcome format may need review.")
+            
+        print("\nDETAILED RESULTS:")
+        print(result)
+    except Exception as e:
+        print(f"⚠️  Error parsing results: {e}")
+        print(f"Raw result: {result}")
+    
     return result
 
 if __name__ == "__main__":
-    # Quick test scenarios
-    print("🚀 Testing Ollama Integration...")
+    # Test different negotiation scenarios
+    print("🚀 Testing Ollama Integration with Multiple Scenarios...")
     
-    # Test 1: Close gap scenario
-    print("\n📋 Scenario 1: Close Gap Negotiation")
-    run_negotiation("software_license", 10000, 11000)
+    # Test 1: Successful deal scenario (small gap)
+    print("\n📋 Scenario 1: Likely Success - Software License")
+    print("Expected: DEAL SUCCESSFULLY NEGOTIATED")
+    run_negotiation("software_license", 10000, 10500)  # 5% gap - should succeed
     
-    # Test 2: Challenging gap scenario  
-    print("\n📋 Scenario 2: Challenging Gap Negotiation")
-    run_negotiation("consulting_services", 15000, 20000)
+    # Test 2: Moderate gap scenario (requires negotiation)
+    print("\n📋 Scenario 2: Moderate Gap - Consulting Services")  
+    print("Expected: Either deal or mediation depending on negotiation")
+    run_negotiation("consulting_services", 15000, 17500)  # 16% gap - could go either way
+    
+    # Test 3: Challenging gap scenario (likely needs mediation)
+    print("\n📋 Scenario 3: Challenging Gap - Equipment Purchase")
+    print("Expected: MEDIATION REQUIRED")
+    run_negotiation("equipment_purchase", 25000, 35000)  # 40% gap - likely needs mediation
     
     print("\n✅ All scenarios complete!") 
