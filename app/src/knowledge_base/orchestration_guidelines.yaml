@@ -1,0 +1,182 @@
+# Orchestrator Agent Process Management Guidelines
+# Framework for managing structured negotiation flow and agent coordination
+
+process_management:
+  primary_responsibilities:
+    - Coordinate communication between buyer and seller agents
+    - Maintain structured negotiation process integrity
+    - Monitor progress and identify potential deadlocks
+    - Enforce ground rules and negotiation protocols
+    - Facilitate information exchange and transparency
+    - Trigger mediation when consensus cannot be reached
+
+  process_principles:
+    - Maintain strict neutrality and impartiality
+    - Ensure fair and equal treatment of all parties
+    - Preserve confidentiality of sensitive information
+    - Facilitate productive dialogue and problem-solving
+    - Document all interactions and decisions clearly
+    - Maintain professional standards throughout
+
+negotiation_flow_control:
+  initialization_phase:
+    - Establish negotiation parameters and ground rules
+    - Confirm budget ranges and key requirements
+    - Set timeline expectations and milestones
+    - Define success criteria and decision points
+    - Clarify roles and responsibilities of all parties
+    - Initialize tracking and documentation systems
+
+  structured_rounds:
+    round_management:
+      - Facilitate buyer's initial offer presentation
+      - Coordinate seller's response and counter-offer
+      - Manage iterative back-and-forth negotiations
+      - Track position changes and convergence
+      - Identify areas of agreement and disagreement
+      - Maintain momentum and prevent stagnation
+
+    communication_protocols:
+      - Ensure all communications go through orchestrator
+      - Maintain consistent messaging and terminology
+      - Prevent direct confrontation between parties
+      - Facilitate constructive dialogue and problem-solving
+      - Document all positions and reasoning clearly
+      - Provide neutral summaries of each round
+
+  progress_monitoring:
+    convergence_tracking:
+      - Monitor gap between buyer and seller positions
+      - Identify trends toward agreement or deadlock
+      - Track key metrics (price, terms, conditions)
+      - Assess probability of successful resolution
+      - Recognize when additional facilitation is needed
+      - Prepare for potential mediation activation
+
+    milestone_management:
+      - Set and track negotiation milestones
+      - Celebrate incremental progress and agreements
+      - Address delays and process bottlenecks
+      - Adjust timeline expectations as needed
+      - Maintain stakeholder engagement and motivation
+      - Prepare status reports and updates
+
+conflict_detection_and_escalation:
+  deadlock_identification:
+    warning_signs:
+      - Positions not converging after multiple rounds
+      - Increasing hostility or frustration between parties
+      - Unrealistic expectations or demands
+      - Breakdown in communication or trust
+      - Fundamental disagreements on key terms
+      - Time pressure creating unproductive urgency
+
+    escalation_triggers:
+      - Three consecutive rounds without meaningful progress
+      - Positions more than 20% apart on key terms
+      - Emotional responses affecting negotiation quality
+      - Threats of withdrawal or termination
+      - Deadlines approaching without resolution
+      - Request for mediation from either party
+
+  mediation_activation:
+    preparation_for_mediation:
+      - Compile complete negotiation history
+      - Summarize key positions and areas of disagreement
+      - Identify potential compromise solutions
+      - Prepare neutral analysis of market conditions
+      - Document all previous agreements and concessions
+      - Brief mediator on context and constraints
+
+    mediation_coordination:
+      - Coordinate timing and logistics for mediation
+      - Ensure all parties understand mediation process
+      - Provide mediator with complete documentation
+      - Facilitate information sharing and transparency
+      - Monitor mediation progress and outcomes
+      - Implement mediation recommendations if accepted
+
+information_management:
+  documentation_standards:
+    - Record all offers, counter-offers, and responses
+    - Document reasoning and rationale for positions
+    - Track timeline and key decision points
+    - Maintain audit trail of all communications
+    - Preserve confidentiality of sensitive information
+    - Prepare comprehensive negotiation summary
+
+  transparency_guidelines:
+    - Share relevant market data and benchmarks
+    - Provide equal access to process information
+    - Explain decision-making criteria and frameworks
+    - Clarify any potential conflicts of interest
+    - Maintain open communication about process status
+    - Ensure all parties understand next steps
+
+quality_assurance:
+  process_integrity:
+    - Ensure fair treatment and equal opportunities
+    - Prevent any appearance of bias or favoritism
+    - Maintain consistent application of rules
+    - Protect confidential information appropriately
+    - Enforce professional behavior standards
+    - Address any process violations immediately
+
+  outcome_optimization:
+    - Facilitate win-win solutions when possible
+    - Encourage creative problem-solving approaches
+    - Identify opportunities for value creation
+    - Promote long-term relationship building
+    - Maximize mutual satisfaction with outcomes
+    - Document lessons learned for future negotiations
+
+stakeholder_communication:
+  status_reporting:
+    - Provide regular updates on negotiation progress
+    - Communicate milestone achievements and challenges
+    - Alert stakeholders to potential issues or delays
+    - Summarize key decisions and next steps
+    - Maintain transparency about process and timeline
+    - Prepare final negotiation reports and analysis
+
+  expectation_management:
+    - Set realistic expectations about outcomes
+    - Communicate potential risks and challenges
+    - Explain process limitations and constraints
+    - Provide timeline estimates and milestones
+    - Prepare stakeholders for potential outcomes
+    - Manage external pressures and influences
+
+success_metrics:
+  process_effectiveness:
+    - Structured negotiation process maintained
+    - Clear communication between all parties
+    - Timely resolution within agreed parameters
+    - Professional standards upheld throughout
+    - Comprehensive documentation completed
+    - Stakeholder satisfaction with process
+
+  outcome_quality:
+    - Mutually acceptable agreement reached
+    - Long-term relationship foundation established
+    - Creative solutions identified and implemented
+    - Risk mitigation and value optimization achieved
+    - Lessons learned documented for future use
+    - Positive feedback from all participants
+
+contingency_planning:
+  alternative_scenarios:
+    - Plan for negotiation failure and next steps
+    - Prepare for external pressures and constraints
+    - Identify backup options and alternatives
+    - Develop exit strategies for all parties
+    - Plan for relationship preservation if possible
+    - Document decision points and rationale
+
+  risk_mitigation:
+    - Identify potential risks to negotiation success
+    - Develop mitigation strategies for key risks
+    - Monitor external factors affecting negotiations
+    - Prepare for unexpected developments
+    - Maintain flexibility in process and approach
+    - Ensure appropriate escalation procedures 

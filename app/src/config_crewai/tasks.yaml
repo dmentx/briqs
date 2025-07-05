@@ -1,0 +1,148 @@
+# Multi-Agent Negotiation System - Task Definitions
+# Orchestrated negotiation workflow with structured agent interactions
+
+orchestration_task:
+  description: >
+    Manage the entire negotiation process between buyer and seller agents.
+    Your responsibilities include:
+    1. Initialize negotiation parameters and set ground rules
+    2. Coordinate communication between buyer and seller agents
+    3. Monitor negotiation progress and detect potential deadlocks
+    4. Enforce negotiation structure and maintain process integrity
+    5. Activate mediator intervention when consensus cannot be reached
+    6. Document negotiation history and final outcomes
+    
+    Process Flow:
+    - Receive initial negotiation parameters (contract type, budget ranges, key terms)
+    - Facilitate buyer's opening offer presentation
+    - Coordinate seller's response and counter-offers
+    - Manage iterative negotiation rounds with clear handoffs
+    - Detect when parties are too far apart for direct resolution
+    - Trigger mediation process when necessary
+    - Finalize agreements or document negotiation failures
+    
+    Success Metrics:
+    - Clear communication between all parties
+    - Structured negotiation process maintained
+    - Proper escalation to mediation when needed
+    - Complete documentation of negotiation history
+  expected_output: >
+    A comprehensive negotiation summary including:
+    - Initial parameters and constraints
+    - Round-by-round negotiation history
+    - Key decision points and turning points
+    - Final agreement terms or failure analysis
+    - Recommendations for future negotiations
+  agent: orchestrator_agent
+  tools: []
+  async_execution: false
+  context: []
+  output_file: "negotiation_summary.md"
+
+buyer_negotiation_task:
+  description: >
+    Represent the buyer's interests in contract negotiations.
+    Your responsibilities include:
+    1. Analyze negotiation requirements and constraints
+    2. Develop initial offer strategy based on market conditions
+    3. Respond to seller counter-offers with strategic positioning
+    4. Evaluate deal terms against budget and quality requirements
+    5. Identify areas for compromise while protecting core interests
+    6. Make final decisions on deal acceptance or rejection
+    
+    Negotiation Guidelines:
+    - Stay within budget parameters while maximizing value
+    - Consider total cost of ownership, not just initial price
+    - Evaluate contract terms for risk and compliance
+    - Maintain professional relationship-building approach
+    - Document reasoning for all major decisions
+    
+    Success Metrics:
+    - Achieve cost-effective deal within budget constraints
+    - Secure favorable terms and conditions
+    - Maintain positive relationship with seller
+    - Properly assess and mitigate risks
+  expected_output: >
+    Buyer negotiation positions including:
+    - Initial offer with detailed justification
+    - Response to seller counter-offers
+    - Final decision on deal acceptance
+    - Risk assessment and mitigation strategies
+    - Relationship management considerations
+  agent: buyer_agent
+  tools: []
+  async_execution: false
+  context: []
+  output_file: "buyer_positions.md"
+
+seller_negotiation_task:
+  description: >
+    Represent the seller's interests in contract negotiations.
+    Your responsibilities include:
+    1. Analyze buyer requirements and market positioning
+    2. Develop competitive pricing and value proposition
+    3. Respond to buyer offers with strategic counter-proposals
+    4. Balance profit margins with deal closure objectives
+    5. Identify opportunities for upselling and value addition
+    6. Make final decisions on deal terms and acceptance
+    
+    Negotiation Guidelines:
+    - Maximize revenue while ensuring competitive positioning
+    - Focus on long-term customer relationship value
+    - Highlight unique value propositions and differentiators
+    - Maintain flexibility for win-win solutions
+    - Document rationale for pricing and terms decisions
+    
+    Success Metrics:
+    - Achieve profitable deal with acceptable margins
+    - Secure favorable payment and delivery terms
+    - Build foundation for long-term customer relationship
+    - Effectively communicate value proposition
+  expected_output: >
+    Seller negotiation positions including:
+    - Competitive pricing strategy with justification
+    - Response to buyer offers and counter-proposals
+    - Final decision on deal terms and acceptance
+    - Value proposition and differentiation arguments
+    - Customer relationship building strategies
+  agent: seller_agent
+  tools: []
+  async_execution: false
+  context: []
+  output_file: "seller_positions.md"
+
+mediation_task:
+  description: >
+    Provide neutral mediation when buyer and seller cannot reach consensus.
+    Your responsibilities include:
+    1. Analyze complete negotiation history objectively
+    2. Identify areas of alignment and core disagreements
+    3. Assess market fairness of proposed terms
+    4. Develop compromise solutions that respect both parties' interests
+    5. Evaluate deal viability and make recommendations
+    6. Provide final assessment on negotiation outcome
+    
+    Mediation Guidelines:
+    - Maintain complete neutrality and objectivity
+    - Consider industry standards and market conditions
+    - Focus on finding mutually acceptable solutions
+    - Respect both parties' core business requirements
+    - Provide clear rationale for all recommendations
+    
+    Success Metrics:
+    - Objective analysis of negotiation positions
+    - Identification of viable compromise solutions
+    - Clear recommendation on deal viability
+    - Preservation of business relationship potential
+  expected_output: >
+    Mediation assessment including:
+    - Objective analysis of both parties' positions
+    - Identification of key areas of disagreement
+    - Proposed compromise solutions with rationale
+    - Final recommendation on deal viability
+    - Suggestions for future negotiation improvements
+  agent: mediator_agent
+  tools: []
+  async_execution: false
+  context: [orchestration_task, buyer_negotiation_task, seller_negotiation_task]
+  output_file: "mediation_assessment.md"
