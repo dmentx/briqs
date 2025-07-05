@@ -101,9 +101,54 @@ def build_seller_task_description(playbook, buyer_risk_profile, buyer_message):
     Now, provide your response.
     """
 
+def check_deal_status(negotiation_history: list[str], buyer_playbook: dict, seller_playbook: dict) -> str:
+    """
+    Uses an LLM to adjudicate the state of the negotiation.
+    Returns "DEAL", "NO_DEAL", or "STALEMATE".
+    """
+    print("\n⚖️  Adjudicator is checking the deal status...")
+    
+    # We only need the last few turns for context
+    history_str = "\n".join(negotiation_history[-4:]) # Get last 2 rounds (buyer, seller, buyer, seller)
+
+    # Simplified goals for the adjudicator prompt
+    buyer_goal = buyer_playbook.get("Tradables", {}).get("Primary Goal", "No goal specified.")
+    seller_goal = seller_playbook.get("Tradables", {}).get("Primary Goal", "No goal specified.")
+
+    adjudicator_task = Task(
+        description=f"""
+        You are a neutral contract adjudicator. Your sole job is to determine if a deal has been reached.
+        Analyze the following negotiation history.
+
+        **Buyer's Primary Goal:** {buyer_goal}
+        **Seller's Primary Goal:** {seller_goal}
+
+        **Recent Negotiation History:**
+        ---
+        {history_str}
+        ---
+
+        Based ONLY on the explicit statements in the history, has a final agreement been reached on the core terms (price, payment, warranty, delivery)?
+        - If both parties have explicitly agreed to the same final terms, respond with the single word: DEAL
+        - If the negotiation has stalled, with one party stating they are walking away, respond with the single word: STALEMATE
+        - Otherwise, if the negotiation is still ongoing with offers and counter-offers, respond with the single word: NO_DEAL
+
+        Your output MUST be one of these three words and nothing else.
+        """,
+        agent=Agent(role="Adjudicator", goal="Determine negotiation outcome", backstory="A neutral third party.", llm=ollama_llm),
+        expected_output="A single word: DEAL, NO_DEAL, or STALEMATE."
+    )
+
+    # Use a temporary crew to execute this single check
+    crew = Crew(agents=[adjudicator_task.agent], tasks=[adjudicator_task], process=Process.sequential)
+    result = crew.kickoff()
+    
+    print(f"⚖️  Adjudicator's verdict: {result}")
+    return result.strip().upper()
+
 # ====== NEGOTIATION SCENARIO ======
 def run_negotiation(contract_type="heavy_equipment", buyer_risk_profile="low_risk", max_rounds=4):
-    """Run a complete negotiation scenario based on buyer and seller playbooks."""
+    """Run a complete negotiation scenario with an adjudicator checking the status each round."""
     
     if not ollama_llm:
         print("❌ Cannot run negotiation without a working LLM connection.")
@@ -135,14 +180,13 @@ def run_negotiation(contract_type="heavy_equipment", buyer_risk_profile="low_ris
         verbose=True
     )
 
-    # 3. Negotiation Loop (Python as Orchestrator)
+    # 3. Initialize Negotiation
     print("\n🎭 Starting Negotiation...")
     print("=" * 50)
     
     negotiation_history = []
-    last_message = None
-
-    # --- Round 1: Buyer's Opening Offer ---
+    
+    # --- Opening Move: Buyer's First Offer ---
     print("\n--- ROUND 1: Buyer makes an opening offer ---")
     buyer_task = Task(
       description=build_buyer_task_description(buyer_playbook, contract_type),
@@ -150,59 +194,65 @@ def run_negotiation(contract_type="heavy_equipment", buyer_risk_profile="low_ris
       agent=buyer_agent
     )
     
-    # Execute the first task
-    opening_crew = Crew(agents=[buyer_agent], tasks=[buyer_task], process=Process.sequential, verbose=1)
-    last_message = opening_crew.kickoff()
-    negotiation_history.append(f"BUYER: {last_message}")
+    crew = Crew(agents=[buyer_agent], tasks=[buyer_task], process=Process.sequential, verbose=1)
+    last_message = crew.kickoff()
+    negotiation_history.append(f"BUYER (Opening Offer): {last_message}")
     print("\n" + "="*20 + " BUYER'S OPENING OFFER " + "="*20)
     print(last_message)
 
-
-    # --- Rounds 2 to max_rounds: Back and Forth ---
-    for i in range(2, max_rounds * 2): # Loop for multiple turns (seller, then buyer, etc.)
+    # --- Main Negotiation Loop ---
+    for round_number in range(1, max_rounds + 1):
+        print(f"\n--- ROUND {round_number + 1} ---")
         
-        # Check for deal completion
-        if "DEAL REACHED" in last_message.upper() or "NEGOTIATION FAILED" in last_message.upper():
-            print("\n🏁 Negotiation has concluded.")
+        # Seller's Turn
+        print(f"SELLER is responding...")
+        seller_task = Task(
+            description=build_seller_task_description(seller_playbook, buyer_risk_profile, last_message),
+            expected_output="A JSON object with a counter-offer or acceptance, and justification.",
+            agent=seller_agent
+        )
+        crew = Crew(agents=[seller_agent], tasks=[seller_task], process=Process.sequential, verbose=1)
+        last_message = crew.kickoff()
+        negotiation_history.append(f"SELLER: {last_message}")
+        print("\n" + "="*20 + " SELLER'S RESPONSE " + "="*20)
+        print(last_message)
+
+        # Buyer's Turn
+        print(f"BUYER is responding...")
+        buyer_task = Task(
+            description=build_buyer_task_description(buyer_playbook, contract_type, last_message),
+            expected_output="A JSON object with a counter-offer or acceptance, and justification.",
+            agent=buyer_agent
+        )
+        crew = Crew(agents=[buyer_agent], tasks=[buyer_task], process=Process.sequential, verbose=1)
+        last_message = crew.kickoff()
+        negotiation_history.append(f"BUYER: {last_message}")
+        print("\n" + "="*20 + " BUYER'S RESPONSE " + "="*20)
+        print(last_message)
+        
+        # Adjudicator's Turn to Check for Deal
+        status = check_deal_status(negotiation_history, buyer_playbook, seller_playbook)
+        if status == "DEAL":
+            print("\n🏁 Adjudicator confirms: DEAL REACHED!")
+            last_message = "DEAL REACHED. Final terms agreed upon by both parties."
             break
-
-        turn = (i // 2) + 1
+        elif status == "STALEMATE":
+            print("\n🏁 Adjudicator confirms: NEGOTIATION FAILED (STALEMATE).")
+            last_message = "NEGOTIATION FAILED. Parties are at a stalemate."
+            break
+        else: # NO_DEAL
+            print(" Negotiation continues...")
         
-        # Determine whose turn it is
-        if i % 2 == 0: # Seller's turn
-            print(f"\n--- ROUND {turn}: Seller responds ---")
-            
-            seller_task = Task(
-                description=build_seller_task_description(seller_playbook, buyer_risk_profile, last_message),
-                expected_output="A JSON object with a counter-offer or acceptance, and justification.",
-                agent=seller_agent
-            )
-            crew = Crew(agents=[seller_agent], tasks=[seller_task], process=Process.sequential, verbose=1)
-            last_message = crew.kickoff()
-            negotiation_history.append(f"SELLER: {last_message}")
-            print("\n" + "="*20 + " SELLER'S RESPONSE " + "="*20)
-            print(last_message)
-        
-        else: # Buyer's turn
-            print(f"\n--- ROUND {turn}: Buyer responds ---")
-
-            buyer_task = Task(
-                description=build_buyer_task_description(buyer_playbook, contract_type, last_message),
-                expected_output="A JSON object with a counter-offer or acceptance, and justification.",
-                agent=buyer_agent
-            )
-            crew = Crew(agents=[buyer_agent], tasks=[buyer_task], process=Process.sequential, verbose=1)
-            last_message = crew.kickoff()
-            negotiation_history.append(f"BUYER: {last_message}")
-            print("\n" + "="*20 + " BUYER'S RESPONSE " + "="*20)
-            print(last_message)
+        if round_number == max_rounds:
+            print(f"\n🏁 Reached maximum of {max_rounds} rounds. Negotiation concluded without a deal.")
+            last_message = "NEGOTIATION FAILED. Maximum rounds reached."
 
 
     print("\n🎯 NEGOTIATION COMPLETE!")
     print("=" * 50)
     print("\nFull Negotiation History:")
-    for message in negotiation_history:
-        print(f"- {message}\n")
+    for entry in negotiation_history:
+        print(f"- {entry}\n")
     
     print("\nFinal Outcome:")
     print(last_message)
