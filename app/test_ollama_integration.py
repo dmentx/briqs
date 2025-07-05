@@ -8,7 +8,6 @@ from crewai import Agent, LLM, Task, Crew, Process
 import json
 import os
 
-# 1. Shared Ollama LLM - auto-detects available model
 def get_ollama_llm():
     """Get the best available Ollama model."""
     import requests
@@ -331,13 +330,7 @@ MediatorAgent = Agent(
     llm=fast_llm
 )
 
-# 4. ====== SEQUENTIAL NEGOTIATION TASKS ======
-# Note: All tasks will be created dynamically in run_negotiation() using playbook data
-
-# 5. ====== HIERARCHICAL CREW SETUP ======
-# Note: crew will be created dynamically in run_negotiation() with playbook-based tasks
-
-# 6. ====== NEGOTIATION SCENARIO ======
+# 4. ====== NEGOTIATION SCENARIO ======
 def run_negotiation(contract_type="heavy_equipment", buyer_target_price=160000, seller_starting_price=195000, buyer_risk_profile="low_risk"):
     """Run a complete negotiation scenario based on buyer and seller playbooks."""
     
