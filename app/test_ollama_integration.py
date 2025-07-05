@@ -4,7 +4,7 @@ Simple Multi-Agent Negotiation System with Ollama
 Fast setup and execution for contract negotiations
 """
 
-from crewai import Agent, LLM, Task, Crew
+from crewai import Agent, LLM, Task, Crew, Process
 
 # 1. Shared Ollama LLM - auto-detects available model
 def get_ollama_llm():
@@ -49,9 +49,10 @@ SellerAgent = Agent(
 )
 
 OrchestratorAgent = Agent(
-    role="Negotiation Orchestrator",
-    goal="Manage negotiation process, coordinate agents, and ensure fair outcomes.",
-    backstory="Expert process manager with deep understanding of negotiation dynamics.",
+    role="Negotiation Manager",
+    goal="Efficiently manage the negotiation crew, delegate tasks, and ensure successful deal completion.",
+    backstory="You're an experienced negotiation manager with 15+ years in complex contract negotiations. You excel at coordinating teams, delegating tasks strategically, and knowing when to call in mediation support.",
+    allow_delegation=True,  # Enable delegation for hierarchical management
     llm=fast_llm
 )
 
@@ -62,58 +63,117 @@ MediatorAgent = Agent(
     llm=fast_llm
 )
 
-# 3. ====== NEGOTIATION TASKS ======
-buyer_task = Task(
+# 3. ====== HIERARCHICAL NEGOTIATION TASKS ======
+buyer_negotiation_task = Task(
     description="""
-    Analyze the {contract_type} contract requirements and develop a negotiation strategy.
-    Your budget limit is ${buyer_budget}. The seller is asking ${seller_price}.
-    Consider: budget constraints, risk factors, and relationship priorities.
-    Requirements: {requirements}
-    Output: JSON with {position, rationale, red_lines, flexibility_areas}
+    As the buyer representative, develop a comprehensive negotiation position for the {contract_type}.
+    
+    CONTEXT:
+    - Your maximum budget: ${buyer_budget}
+    - Seller's asking price: ${seller_price}
+    - Contract requirements: {requirements}
+    
+    DELIVERABLES:
+    1. Initial negotiation position with rationale
+    2. Identify your red lines (non-negotiable items)
+    3. Areas where you have flexibility
+    4. Risk assessment and mitigation strategies
+    
+    Output: Detailed JSON with {position, budget_analysis, red_lines, flexibility_areas, risk_factors}
     """,
     agent=BuyerAgent,
-    expected_output="JSON negotiation position for {contract_type}"
+    expected_output="Comprehensive buyer negotiation strategy for {contract_type}"
 )
 
-seller_task = Task(
+seller_negotiation_task = Task(
     description="""
-    Evaluate the {contract_type} opportunity and create a sales strategy.
-    Your asking price is ${seller_price}. The buyer's budget is ${buyer_budget}.
-    Consider: pricing optimization, value proposition, and deal structure.
-    Requirements to deliver: {requirements}
-    Output: JSON with {offer, value_points, concession_areas, walkaway_terms}
+    As the seller representative, create a strategic sales approach for the {contract_type}.
+    
+    CONTEXT:
+    - Your target price: ${seller_price}
+    - Buyer's stated budget: ${buyer_budget}
+    - Requirements to deliver: {requirements}
+    
+    DELIVERABLES:
+    1. Value-based pricing strategy with justification
+    2. Key value propositions and differentiators
+    3. Potential concession areas and alternatives
+    4. Minimum acceptable terms (walkaway point)
+    
+    Output: Detailed JSON with {pricing_strategy, value_proposition, concession_options, walkaway_terms}
     """,
     agent=SellerAgent,
-    expected_output="JSON sales position for {contract_type}"
+    expected_output="Comprehensive seller negotiation strategy for {contract_type}"
 )
 
-orchestrator_task = Task(
+final_negotiation_task = Task(
     description="""
-    Coordinate the {contract_type} negotiation between buyer and seller positions.
-    Current gap: Buyer budget ${buyer_budget} vs Seller price ${seller_price}.
-    Identify gaps, facilitate discussion, and guide toward resolution.
-    Contract requirements: {requirements}
-    Output: JSON with {gap_analysis, recommendations, next_steps}
+    As the Negotiation Manager, coordinate the final deal between buyer and seller positions.
+    
+    CONTEXT:
+    - Contract type: {contract_type}
+    - Buyer budget: ${buyer_budget}
+    - Seller price: ${seller_price}
+    - Requirements: {requirements}
+    
+    PROCESS:
+    1. Review both buyer and seller positions
+    2. Identify the negotiation gap and key issues
+    3. Facilitate resolution through strategic guidance
+    4. If positions are irreconcilable, delegate to mediator
+    5. Finalize deal terms or recommend next steps
+    
+    DECISION CRITERIA for Mediation:
+    - Price gap > 20% with no movement after 2 rounds
+    - Fundamental disagreement on key terms
+    - Either party approaching walkaway position
+    
+    MEDIATION DELEGATION:
+    If mediation is needed, delegate to the MediatorAgent to provide neutral analysis and recommendations.
+    
+    Output: JSON with {final_deal, gap_analysis, resolution_strategy, mediation_activated}
     """,
     agent=OrchestratorAgent,
-    expected_output="JSON orchestration plan for {contract_type}"
+    expected_output="Final negotiation outcome with deal terms or escalation plan"
 )
 
+# Optional mediation task - activated by orchestrator when needed
 mediation_task = Task(
     description="""
-    If needed, provide neutral analysis for the {contract_type} negotiation.
-    Analyze the gap between ${buyer_budget} (buyer) and ${seller_price} (seller).
-    Consider market fairness, mutual benefit, and deal viability for: {requirements}
-    Output: JSON with {assessment, recommendations, fair_terms}
+    MEDIATION ACTIVATION: You are called in when buyer and seller cannot reach agreement.
+    
+    CONTEXT:
+    - Contract type: {contract_type}
+    - Buyer budget: ${buyer_budget}
+    - Seller price: ${seller_price}
+    - Requirements: {requirements}
+    
+    NEUTRAL ANALYSIS:
+    1. Review both positions objectively
+    2. Research market fairness and industry standards
+    3. Identify mutually beneficial solutions
+    4. Propose compromise terms that respect both parties' core needs
+    5. Provide recommendations for deal structure
+    
+    MEDIATION PRINCIPLES:
+    - Remain completely neutral and unbiased
+    - Focus on mutual benefit and long-term relationship
+    - Consider market rates and fair value exchange
+    - Propose creative solutions (payment terms, scope adjustments, etc.)
+    
+    Output: JSON with {neutral_assessment, market_analysis, recommended_terms, compromise_options}
     """,
     agent=MediatorAgent,
-    expected_output="JSON mediation recommendations for {contract_type}"
+    expected_output="Neutral mediation analysis with compromise recommendations"
 )
 
-# 4. ====== CREW SETUP ======
+# 4. ====== HIERARCHICAL CREW SETUP ======
 crew = Crew(
-    agents=[BuyerAgent, SellerAgent, OrchestratorAgent, MediatorAgent],
-    tasks=[buyer_task, seller_task, orchestrator_task, mediation_task],
+    agents=[BuyerAgent, SellerAgent, MediatorAgent],  # Subordinate agents under manager
+    tasks=[buyer_negotiation_task, seller_negotiation_task, final_negotiation_task, mediation_task],
+    manager_agent=OrchestratorAgent,  # Custom manager agent with delegation authority
+    process=Process.hierarchical,  # Enable hierarchical delegation and task management
+    planning=True,  # Enable planning for better task coordination
     verbose=True,
     memory=False
 )
