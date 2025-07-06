@@ -13,31 +13,6 @@ from langchain.tools import tool
 from typing import Type
 from pydantic import BaseModel, Field
 
-class CalculatorInput(BaseModel):
-    """Input schema for Calculator."""
-    operation: str = Field(..., description="Mathematical expression to evaluate, e.g., '200*7' or '5000/2*10'")
-
-class CalculatorTool(BaseTool):
-    name: str = "calculate"
-    description: str = "Useful to perform any mathematical calculations, like sum, minus, multiplication, division, etc. The input should be a mathematical expression, a couple examples are 200*7 or 5000/2*10. Do not use this tool for simple numbers - only for actual calculations."
-    args_schema: Type[BaseModel] = CalculatorInput
-    
-    def _run(self, operation: str) -> str:
-        """Execute the calculation."""
-        try:
-            # Check if it's just a number (not a calculation)
-            if operation.strip().isdigit():
-                return f"No calculation needed. The value is simply: {operation}"
-            
-            # Basic validation for mathematical expressions
-            allowed_chars = set('0123456789+-*/.() ')
-            if not all(c in allowed_chars for c in operation):
-                return f"Invalid characters in expression: {operation}. Only numbers and +, -, *, /, (, ) are allowed."
-            
-            result = eval(operation)
-            return f"Calculation result: {result}"
-        except Exception as e:
-            return f"Error in calculation: {str(e)}. Please check your mathematical expression."
 
 # def get_ollama_llm():
 #     """Get llama4 model with context size."""
@@ -583,8 +558,6 @@ def run_negotiation(max_rounds=4):
     if not all([combined_playbook, backup_terms, agents_config]): return
     print("✅ Configurations loaded.")
 
-    # Create the Calculator tool instance
-    calculator_tool = CalculatorTool()
     
     # Give the agents the calculator tool
     buyer_agent = Agent(**agents_config['buyer_agent'], llm=llm_llama4, verbose=True)
