@@ -1,0 +1,115 @@
+{
+    "result": {
+        "product_type": "excavator",
+        "product_details": {
+            "seller_playbook": {
+                "Criteria": {
+                    "Product": {
+                        "Walk-Away-Price (USD)": 173000,
+                        "Target Price (USD)": 178000,
+                        "Starting Price": 180000
+                    },
+                    "Buyer": {
+                        "risk_profile_definition": {
+                            "low_risk": "An established public company or a private company with a minimum 5-year perfect payment history with us across at least 3 major equipment purchases.",
+                            "medium_risk": "A repeat customer with a perfect but short payment history, OR a new customer with an impeccable credit report and a minimum of 5 years in business.",
+                            "high_risk": "Any business operating for less than 3 years, any new customer without an impeccable credit report, any customer with a single instance of late payment in their history with us, or any entity operating in an industry deemed volatile by our finance department."
+                        }
+                    }
+                },
+                "Negotiation rules": [
+                    "Payment security is the single primary objective. Achieving the Target Price is secondary to the complete elimination of payment default risk. A secure deal at the Walk-Away-Price is superior to a risky deal at the Target Price.",
+                    "Any price concession must be preceded by the buyer agreeing to an improvement in payment terms (e.g., larger down payment, shorter terms, or elimination of credit). We do not give price concessions in exchange for non-financial concessions.",
+                    "Always anchor the negotiation with the Starting Price. The Target Price is an internal goal. The Walk-Away-Price must never be revealed. Do not make a counter-offer to any initial offer below the Walk-Away-Price; instead, state that the offer is not viable and invite them to submit a substantially revised offer.",
+                    "Maintain a professional, firm, and principled tone. Our terms are based on rigid corporate financial policy, not personal judgments or a lack of trust.",
+                    "If a high-risk buyer will not agree to 100% pre-payment or provide an Irrevocable Letter of Credit, the negotiation is to be concluded politely and immediately. This is a non-negotiable policy with no fallback.",
+                    "Credit terms beyond Net 30 are not offered under any circumstances. Requests for Net 45 or Net 60 will be declined."
+                ],
+                "Tradables": {
+                    "Primary Goal": "The singular, non-negotiable goal is the complete elimination of payment default risk. All other objectives, including price and relationship-building, are subordinate to this.",
+                    "Give (Low-cost to us)": [
+                        "Free local delivery (within a 50-mile radius, subject to our standard logistics schedule, no expediting)."
+                    ],
+                    "Get (High value to us)": [
+                        "Pre-payment in full (the ultimate goal for all risk profiles).",
+                        "A larger-than-required, non-refundable down payment.",
+                        "A personal guarantee from the principal/owner for any medium or high-risk private company.",
+                        "Agreement to a pre-paid, multi-year service and maintenance contract.",
+                        "Agreement to our specific, more restrictive warranty terms for high-risk buyers."
+                    ],
+                    "Ideal & Acceptable Terms": {
+                        "High risk buyer": {
+                            "Payment Terms": {
+                                "Goal": "100% of payment via cleared funds prior to the machine being prepared for delivery.",
+                                "Fallback Position": "None. An Irrevocable Letter of Credit (ILOC) is not a fallback for payment terms."
+                            },
+                            "Warranties": {
+                                "Goal": "The Seller warrants that the Goods will be functional and free from material defects at the time of delivery and formal acceptance only. This warranty expires upon Buyer's acceptance of the Goods.",
+                                "Fallback Position": "No sale. Standard warranty is not offered to high-risk buyers."
+                            }
+                        },
+                        "Medium risk buyer": {
+                            "Payment Terms": {
+                                "Goal": "Minimum 60% non-refundable down payment, balance due via cleared funds upon delivery (before offloading).",
+                                "Fallback Position": "Increase down payment to 75%. We will not reduce the down payment below 60%."
+                            }
+                        },
+                        "Low risk buyer": {
+                            "Goal": "Minimum 25% non-refundable down payment with an approved Purchase Order, balance due Net 30.",
+                            "Fallback Position": "If buyer resists the 25% down payment, we can accept 10% down on Net 30 terms ONLY in exchange for the buyer purchasing a pre-paid, 2-year service contract. Net terms beyond 30 days are not available."
+                        }
+                    }
+                }
+            },
+            "buyer_playbook": {
+                "Negotiation Strategy": [
+                    "Never reveal your Maximum Budget. Always anchor the negotiation to your Target Purchase Price or lower.",
+                    "An aggressive but realistic opening offer can significantly lower the final price.",
+                    "Question the value of every seller 'concession'. Unbundle their packages to understand the true cost and benefit of each item.",
+                    "Always bundle your requests. For example, 'If you can meet our price, we'll also need you to include the extended warranty and free delivery.'",
+                    "Always be professional and polite, but be prepared to walk away if your core requirements on price and terms are not met."
+                ],
+                "Tradables": {
+                    "Primary Goal": "Achieve the lowest possible Total Cost of Ownership (TCO). The sticker price is important, but favorable terms, an extended warranty, and included service are equally critical for minimizing long-term expenses.",
+                    "Get (High value to us)": [
+                        "A significant discount off the list price.",
+                        "A comprehensive, multi-year warranty (especially on powertrain and hydraulics).",
+                        "The first 2-3 scheduled maintenance services included (parts and labor).",
+                        "Favorable payment terms (e.g., Net 60 or Net 90) to improve cash flow.",
+                        "Free delivery to our primary worksite."
+                    ],
+                    "Give (Low-cost to us)": [
+                        "A public, positive customer testimonial or case study.",
+                        "A commitment to a future parts & service contract (if the rates are competitive).",
+                        "Flexibility on the delivery date (if our project schedule allows).",
+                        "A slightly larger-than-standard down payment in exchange for a major price discount or extended warranty."
+                    ]
+                },
+                "Ideal & Acceptable Terms": {
+                    "Price": {
+                        "Target Purchase Price (USD)": 165000,
+                        "Maximum Budget (USD)": 175000,
+                        "Ideal": "A final price at or below our Target Purchase Price of $165,000.",
+                        "Fallback Position": "A price up to our Maximum Budget of $175,000, but only if it includes significant 'Gets' like a 3-year warranty."
+                    },
+                    "Payment Terms": {
+                        "Ideal": "Net 60 terms with 0% down payment required.",
+                        "Fallback Position": "Net 30 terms with no more than a 5% down payment required to secure the machine."
+                    },
+                    "Warranty": {
+                        "Ideal": "3-year / 3,000-hour comprehensive warranty. First two scheduled services (250hr, 500hr) fully included.",
+                        "Fallback Position": "Minimum 2-year / 2,000-hour powertrain warranty. First scheduled service included (labor only)."
+                    },
+                    "Delivery": {
+                        "Ideal": "Free delivery to our site",
+                        "Fallback Position": "Delivery cost capped at a pre-agreed, reasonable flat fee."
+                    }
+                }
+            }
+        },
+        "buyer_profile": {
+            "Credit Worthiness": 8,
+            "Recurring Customer": true
+        }
+    }
+}

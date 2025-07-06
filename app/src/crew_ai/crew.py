@@ -551,7 +551,7 @@ def run_negotiation(max_rounds=4):
 
     # 1. Load configurations
     print("📚 Loading configurations...")
-    combined_playbook = load_playbook("src/knowledge_base/excavator_seller1.json")
+    combined_playbook = load_playbook("src/knowledge_base/excavator_seller4.json")
     backup_terms = load_playbook("src/knowledge_base/briqs_backup_terms_excavator.json")
     with open('src/config_crewai/agents.yaml', 'r') as f:
         agents_config = yaml.safe_load(f)
