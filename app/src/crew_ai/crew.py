@@ -2,7 +2,7 @@ import json
 import os
 import yaml  # Make sure to install with: pip install pyyaml
 
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew, Process, LLM
 
 def get_ollama_llm():
     """Get llama4 model with context size."""
@@ -75,7 +75,7 @@ def build_buyer_task_description(playbook, contract_type, previous_message=None)
         This is the start of the negotiation. Make your aggressive but realistic opening offer based on your playbook.
         """
 
-def build_seller_task_description(playbook, buyer_risk_profile, buyer_message):
+def build_seller_task_description(playbook, buyer_risk_profile, buyer_message, contract_type):
     """Builds the seller's task based on the buyer's message."""
     # (Your original `build_seller_task_description` logic is excellent)
     # For this example, a simplified version. You should keep your detailed one.
@@ -207,7 +207,7 @@ def run_negotiation(contract_type="heavy_equipment", buyer_risk_profile="low_ris
         # Seller's Turn
         print(f"SELLER is responding...")
         seller_task = Task(
-            description=build_seller_task_description(seller_playbook, buyer_risk_profile, last_message),
+            description=build_seller_task_description(seller_playbook, buyer_risk_profile, last_message, contract_type),
             expected_output="A JSON object with a counter-offer or acceptance, and justification.",
             agent=seller_agent
         )
