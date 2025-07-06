@@ -9,9 +9,17 @@ from pydub import AudioSegment
 from groq import Groq
 import logging
 from typing import List
+from dotenv import load_dotenv
+
+# Optional imports
+try:
+    import openai
+    OPENAI_IMPORT_AVAILABLE = True
+except ImportError:
+    OPENAI_IMPORT_AVAILABLE = False
 
 # Import simplified models
-from src.models.core import Result, Excavator, AluminumSheet, Item, RequestNegotiate
+from src.models.core import Result, Excavator, AluminumSheet, Item, RequestNegotiate, Playbook, Buyer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +42,7 @@ app.add_middleware(
 
 # Initialize Groq client
 try:
+    load_dotenv()
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     GROQ_AVAILABLE = True
 except Exception as e:
@@ -41,12 +50,18 @@ except Exception as e:
     GROQ_AVAILABLE = False
 
 try:
-    openai_client = openai.OpenAI(
-        base_url="https://api.groq.com/openai/v1",
-        api_key=os.environ.get("GROQ_API_KEY")
-    )
+    if OPENAI_IMPORT_AVAILABLE:
+        openai_client = openai.OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=os.environ.get("GROQ_API_KEY")
+        )
+        OPENAI_AVAILABLE = True
+    else:
+        openai_client = None
+        OPENAI_AVAILABLE = False
 except Exception as e:
     print(f"OpenAI Groq client initialization failed: {e}")
+    openai_client = None
     OPENAI_AVAILABLE = False
 
 def compress_audio(audio_content: bytes) -> bytes:
@@ -104,17 +119,16 @@ def transcribe_audio(audio_bytes: bytes, filename: str) -> dict:
         audio_file.name = filename  # Set filename for the API
         
         # Create transcription using Groq API
-        transcription = groq_client.audio.transcriptions.create(
+        transcription = client.audio.transcriptions.create(
             file=audio_file,
             model="whisper-large-v3-turbo",
             response_format="text",
-            timestamp_granularities=["word", "segment"],
             language="en",
             temperature=0.0
         )
         
         return {
-            "text": transcription.text,
+            "text": transcription,
             "language": "en",
             "duration": None,
             "segments": []
@@ -387,20 +401,6 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
-@app.get("/api/test/purchaseHistory/{buyer_id}")
-async def test_purchase_history(buyer_id: int):
-    """
-    Test endpoint to check purchase history for a buyer
-    """
-    try:
-        purchased_items = get_purchased_items(buyer_id)
-        return {
-            "buyer_id": buyer_id,
-            "purchased_items": list(purchased_items),
-            "total_purchased": len(purchased_items)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
