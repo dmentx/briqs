@@ -5,6 +5,8 @@ buyer_agent:
     Negotiate the purchase of a product based on a provided playbook.
   backstory: >
     You are a procurement agent. You must follow the instructions and playbook provided in the task.
+    When you need to perform calculations (like adding, subtracting, multiplying, or dividing numbers),
+    use the calculate tool. Only use the tool for actual mathematical operations, not for simple numbers.
 
 seller_agent:
   role: >
@@ -13,6 +15,8 @@ seller_agent:
     Negotiate the sale of a product based on a provided playbook.
   backstory: >
     You are a sales agent. You must follow the instructions and playbook provided in the task.
+    When you need to perform calculations (like adding, subtracting, multiplying, or dividing numbers),
+    use the calculate tool. Only use the tool for actual mathematical operations, not for simple numbers.
   
 mediator_agent:
   role: >

@@ -2,6 +2,10 @@ import json
 import os
 import yaml  
 import re
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import BaseTool
@@ -15,40 +19,59 @@ class CalculatorInput(BaseModel):
 
 class CalculatorTool(BaseTool):
     name: str = "calculate"
-    description: str = "Useful to perform any mathematical calculations, like sum, minus, multiplication, division, etc. The input should be a mathematical expression, a couple examples are 200*7 or 5000/2*10"
+    description: str = "Useful to perform any mathematical calculations, like sum, minus, multiplication, division, etc. The input should be a mathematical expression, a couple examples are 200*7 or 5000/2*10. Do not use this tool for simple numbers - only for actual calculations."
     args_schema: Type[BaseModel] = CalculatorInput
     
     def _run(self, operation: str) -> str:
         """Execute the calculation."""
         try:
-            result = eval(operation)
-            return str(result)
-        except Exception as e:
-            return f"Error in calculation: {str(e)}"
-
-def get_ollama_llm():
-    """Get llama4 model with context size."""
-    import requests
-    try:
-        response = requests.get("http://localhost:11434/api/tags", timeout=3)
-        if response.status_code == 200:
-            models = response.json()
-            model_names = [model["name"] for model in models.get("models", [])]
+            # Check if it's just a number (not a calculation)
+            if operation.strip().isdigit():
+                return f"No calculation needed. The value is simply: {operation}"
             
-            if "llama4:16x17b" in model_names:
-                return LLM(
-                    model="ollama/llama4:16x17b", 
-                    base_url="http://localhost:11434",
-                    num_ctx=8192  # Context size parameter
-                )
-    except Exception as e:
-        print(f"⚠️  Error connecting to Ollama: {e}")
-    raise Exception("llama4:16x17b model not found. Please ensure it's installed in Ollama.")
+            # Basic validation for mathematical expressions
+            allowed_chars = set('0123456789+-*/.() ')
+            if not all(c in allowed_chars for c in operation):
+                return f"Invalid characters in expression: {operation}. Only numbers and +, -, *, /, (, ) are allowed."
+            
+            result = eval(operation)
+            return f"Calculation result: {result}"
+        except Exception as e:
+            return f"Error in calculation: {str(e)}. Please check your mathematical expression."
 
-try:
-    ollama_llm = get_ollama_llm()
-except Exception:
-    ollama_llm = None
+# def get_ollama_llm():
+#     """Get llama4 model with context size."""
+#     import requests
+#     try:
+#         response = requests.get("http://localhost:11434/api/tags", timeout=3)
+#         if response.status_code == 200:
+#             models = response.json()
+#             model_names = [model["name"] for model in models.get("models", [])]
+            
+#             if "llama4:16x17b" in model_names:
+#                 return LLM(
+#                     model="ollama/llama4:16x17b", 
+#                     base_url="http://localhost:11434",
+#                     num_ctx=8192  # Context size parameter
+#                 )
+#     except Exception as e:
+#         print(f"⚠️  Error connecting to Ollama: {e}")
+#     raise Exception("llama4:16x17b model not found. Please ensure it's installed in Ollama.")
+
+# try:
+#     llm_llama4 = get_ollama_llm()
+# except Exception:
+#     llm_llama4 = None
+
+# Configure Groq LLM with API key
+groq_api_key = os.getenv("GROQ_API_KEY")
+if not groq_api_key:
+    raise ValueError("GROQ_API_KEY environment variable is not set. Please add it to your .env file.")
+
+llm_llama4 = LLM(
+    model="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    temperature=0.4
+)
 
 
 def load_playbook(playbook_path):
@@ -185,7 +208,6 @@ def build_buyer_task_description(playbook, previous_message=None, mediation_prop
     **Stick strictly to these rules.**
     **Do not make concessions that are not part of your tradables and/or acceptable contract terms.**
     
-    You can use the calculator tool to perform calculations.
     Output your response as a JSON object with your offer and justification.
     """
 
@@ -220,7 +242,7 @@ def build_buyer_task_description(playbook, previous_message=None, mediation_prop
         {base_description}
         """
 
-def build_seller_task_description(playbook, buyer_risk_profile, buyer_message, mediation_proposal=None):
+def build_seller_task_description(playbook, buyer_message, mediation_proposal=None):
     """Builds the seller's task, including any mediator proposals."""
 
     # Extract product type from playbook
@@ -364,7 +386,7 @@ def build_seller_task_description(playbook, buyer_risk_profile, buyer_message, m
     base_description = f"""
     You are the seller of {product_type}. Your goal is to secure the best deal based on your contract negotiation playbook.
     Refer to this playbook for 1. acceptable price range, 2. negotiation rules, 3. tradables that you want from the other party or are willing to give in exchange for concessions and 4. ideal/acceptable contract terms.
-    The buyer has a '{buyer_risk_profile}' profile with the following characteristics: {buyer_profile_desc}. Choose the correct contract terms based on the buyers risk score.
+    The buyer has a buyer risk profile with the following characteristics: {buyer_profile_desc}. Choose the correct contract terms based on the buyers risk score.
 
     Your playbook details: 
     
@@ -374,8 +396,6 @@ def build_seller_task_description(playbook, buyer_risk_profile, buyer_message, m
 
     **Stick strictly to these rules.**
     **Do not make concessions that are not part of your tradables and/or acceptable contract terms.**
-
-    You can use the calculator tool to perform calculations.
 
     Output your response as a JSON object with your counter-offer and justification.
     If a deal is reached, start your response with "DEAL REACHED".
@@ -415,7 +435,7 @@ def run_final_mediation(negotiation_history: list[str], combined_playbook: dict,
     history_str = "\n".join(negotiation_history)
     with open('src/config_crewai/agents.yaml', 'r') as f:
         agents_config = yaml.safe_load(f)
-    mediator_agent = Agent(**agents_config['mediator_agent'], llm=ollama_llm, verbose=True)
+    mediator_agent = Agent(**agents_config['mediator_agent'], llm=llm_llama4, verbose=True)
 
     # The Mediator's task is very specific and detailed here.
     mediation_task = Task(
@@ -458,11 +478,11 @@ def run_final_mediation(negotiation_history: list[str], combined_playbook: dict,
 
 
 # ====== NEGOTIATION SCENARIO ======
-def run_negotiation(buyer_risk_profile="low_risk", max_rounds=4):
+def run_negotiation(max_rounds=4):
     """
     Runs a negotiation that can proceed to a final mediation stage if no deal is reached.
     """
-    if not ollama_llm: return
+    if not llm_llama4: return
 
     # 1. Load configurations
     print("📚 Loading configurations...")
@@ -472,11 +492,11 @@ def run_negotiation(buyer_risk_profile="low_risk", max_rounds=4):
     if not all([combined_playbook, backup_terms, agents_config]): return
     print("✅ Configurations loaded.")
 
-    # Create calculator tool instance
+    # Create calculator tool instance (optional)
     calculator_tool = CalculatorTool()
     
-    buyer_agent = Agent(**agents_config['buyer_agent'], llm=ollama_llm, verbose=True, tools=[calculator_tool])
-    seller_agent = Agent(**agents_config['seller_agent'], llm=ollama_llm, verbose=True, tools=[calculator_tool])
+    buyer_agent = Agent(**agents_config['buyer_agent'], llm=llm_llama4, verbose=True)
+    seller_agent = Agent(**agents_config['seller_agent'], llm=llm_llama4, verbose=True)
 
     # 2. Main Negotiation Phase
     print("\n🎭 Starting Main Negotiation...")
@@ -494,7 +514,7 @@ def run_negotiation(buyer_risk_profile="low_risk", max_rounds=4):
     for round_number in range(1, max_rounds + 1):
         print(f"\n--- ROUND {round_number + 1} ---")
         
-        task = Task(description=build_seller_task_description(combined_playbook, buyer_risk_profile, last_message), agent=seller_agent, expected_output="A JSON object with your counter-offer and justification.")
+        task = Task(description=build_seller_task_description(combined_playbook, last_message), agent=seller_agent, expected_output="A JSON object with your counter-offer and justification.")
         last_message = Crew(agents=[seller_agent], tasks=[task]).kickoff()
         negotiation_history.append(f"SELLER: {last_message}")
         print("\n" + "="*20 + " SELLER'S RESPONSE " + "="*20); print(last_message)
@@ -523,7 +543,7 @@ def run_negotiation(buyer_risk_profile="low_risk", max_rounds=4):
             negotiation_history.append(f"BUYER (Final Word): {buyer_final_word}")
             print("\n" + "="*20 + " BUYER'S FINAL WORD " + "="*20); print(buyer_final_word)
 
-            final_seller_task = Task(description=build_seller_task_description(combined_playbook, buyer_risk_profile, buyer_final_word, formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final counter-offer and justification.")
+            final_seller_task = Task(description=build_seller_task_description(combined_playbook, buyer_final_word, formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final counter-offer and justification.")
             last_message = Crew(agents=[seller_agent], tasks=[final_seller_task]).kickoff()
             negotiation_history.append(f"SELLER (Final Word): {last_message}")
         else:
