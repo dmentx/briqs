@@ -1,0 +1,63 @@
+{
+    "Criteria": {
+      "Product": {
+        "Walk-Away-Price (per ton)": "[Insert Walk-Away Price, e.g., Market Benchmark + 7%]",
+        "Target Price (per ton)": "[Insert Target Price, e.g., Market Benchmark + 10%]",
+        "Starting Price (per ton)": "[Insert Starting Price, e.g., Market Benchmark + 18%]"
+      },
+      "Buyer": {
+        "Credit Worthiness": "Mandatory, non-waivable credit check. There are no exceptions.",
+        "History": "Is this a repeat customer? A full account review is mandatory. Any history of late payment, regardless of subsequent resolution, will automatically classify the customer as high-risk.",
+        "risk_profile_definition": {
+          "low_risk": "An established public company or a private company with a minimum 5-year perfect payment history with us across at least 3 major supply contracts.",
+          "medium_risk": "A repeat customer with a perfect but short payment history, OR a new customer with an impeccable credit report and a minimum of 5 years in business.",
+          "high_risk": "Any business operating for less than 3 years, any new customer without an impeccable credit report, any customer with a single instance of late payment in their history with us, or any entity operating in an industry deemed volatile by our finance department."
+        }
+      }
+    },
+    "Negotiation rules": [
+      "Payment security is the single primary objective. Achieving the Target Price is secondary to the complete elimination of payment default risk. A secure deal at the Walk-Away-Price is superior to a risky deal at the Target Price.",
+      "Any price concession must be preceded by the buyer agreeing to an improvement in payment terms (e.g., larger down payment, shorter terms, or elimination of credit). We do not give price concessions in exchange for non-financial concessions.",
+      "Always anchor the negotiation with the Starting Price. The Target Price is an internal goal. The Walk-Away-Price must never be revealed. Do not make a counter-offer to any initial offer below the Walk-Away-Price; instead, state that the offer is not viable and invite them to submit a substantially revised offer.",
+      "Maintain a professional, firm, and principled tone. Our terms are based on rigid corporate financial policy, not personal judgments or a lack of trust.",
+      "If a high-risk buyer will not agree to 100% pre-payment or provide an Irrevocable Letter of Credit, the negotiation is to be concluded politely and immediately. This is a non-negotiable policy with no fallback.",
+      "Credit terms beyond Net 30 are not offered under any circumstances. Requests for Net 45 or Net 60 will be declined."
+    ],
+    "Tradables": {
+      "Primary Goal": "The singular, non-negotiable goal is the complete elimination of payment default risk. All other objectives, including price and relationship-building, are subordinate to this.",
+      "Give (Low-cost to us)": [
+        "Free local delivery (subject to our standard logistics schedule, no expediting)."
+      ],
+      "Get (High value to us)": [
+        "Pre-payment in full (the ultimate goal for all risk profiles).",
+        "A larger-than-required, non-refundable down payment.",
+        "A personal guarantee from the principal/owner for any medium or high-risk private company.",
+        "Agreement to a pre-paid, binding annual supply contract with fixed volume.",
+        "Agreement to our specific, more restrictive warranty terms for high-risk buyers."
+      ]
+    },
+    "Ideal & Acceptable Terms": {
+      "High risk buyer": {
+        "Payment Terms": {
+          "Ideal": "100% of payment via cleared funds before material is allocated or prepared for shipment.",
+          "Fallback Position": "None. An Irrevocable Letter of Credit (ILOC) is not a fallback for payment terms."
+        },
+        "Warranties": {
+          "Ideal": "The Seller warrants that the Goods will conform to the agreed specifications at the time of inspection only. This warranty expires immediately upon Buyer's formal acceptance or use of the Goods.",
+          "Fallback Position": "No sale. Standard warranty is not offered to high-risk buyers."
+        }
+      },
+      "Medium risk buyer": {
+        "Payment Terms": {
+          "Ideal": "Minimum 60% non-refundable down payment, balance due via cleared funds upon delivery (before offloading).",
+          "Fallback Position": "Increase down payment to 75%. We will not reduce the down payment below 60%."
+        }
+      },
+      "Low risk buyer": {
+        "Payment Terms": {
+          "Ideal": "Minimum 25% non-refundable down payment with an approved Purchase Order, balance due Net 30.",
+          "Fallback Position": "If buyer resists the 25% down payment, we can accept 10% down on Net 30 terms ONLY in exchange for the buyer signing a pre-paid, binding 12-month supply agreement. Net terms beyond 30 days are not available."
+        }
+      }
+    }
+  }

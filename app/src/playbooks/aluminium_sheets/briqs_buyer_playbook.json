@@ -1,0 +1,47 @@
+{
+    "Playbook_for_Aluminum_Sheets": {
+      "Negotiation Strategy": [
+        "Never reveal your Maximum Budget or ceiling price per ton. Always anchor the negotiation to your Target Price or lower.",
+        "An aggressive but realistic opening offer, based on current market rates (e.g., LME + premium), can significantly lower the final price.",
+        "Question the value of every seller charge. Unbundle the quote to understand the true cost of the material vs. freight, insurance, and other fees.",
+        "Always bundle your requests. For example, 'If you can meet our target price per ton, we can agree to your proposed delivery schedule, provided you also offer Net 60 terms and free delivery.'",
+        "Always be professional and polite, but be prepared to walk away if your core requirements on price, quality specifications, and key terms are not met."
+      ],
+      "Tradables": {
+        "Primary Goal": "Achieve the lowest possible landed cost per ton while ensuring material quality and supply reliability. The base price is key, but favorable payment terms, free delivery, and strict adherence to specifications are critical for minimizing overall costs and production risks.",
+        "Get (High value to us)": [
+          "A significant discount off the current market/list price per ton.",
+          "Favorable payment terms (e.g., Net 60 or Net 90) to improve cash flow.",
+          "Free delivery to our facility (DDP - Delivered Duty Paid).",
+          "Guaranteed supply and volume-based discounts for future orders.",
+          "A longer inspection period (e.g., 15 business days) and a more favorable remedy clause for non-conforming material."
+        ],
+        "Give (Low-cost to us)": [
+          "A public, positive customer testimonial or case study focusing on quality and reliability.",
+          "A commitment to a future supply agreement (if rates and quality remain competitive).",
+          "Flexibility on the delivery date (within a reasonable window) to allow for production/logistics optimization by the seller.",
+          "A slightly larger-than-standard down payment (e.g., 10%) only in exchange for a major price discount or significantly improved payment terms on the balance."
+        ]
+      },
+      "Ideal & Acceptable Terms": {
+        "Price": {
+          "Target Price (per ton)": "2600",
+          "Maximum Price (per ton)": "2800",
+          "Ideal": "A final price at or below our Target Price per Ton.",
+          "Fallback Position": "A price up to our Maximum Price, but only if it includes significant 'Gets' like Net 60 terms and free delivery."
+        },
+        "Payment Terms": {
+          "Ideal": "Net 60 terms with 0% down payment required.",
+          "Fallback Position": "Net 30 terms with no more than a 10% down payment required to secure the order."
+        },
+        "Warranty": {
+          "Ideal": "Acceptance of the 12-month warranty, but with an extended inspection period of 15 business days. For any non-conforming material, Buyer has the choice of remedy (expedited replacement or immediate credit).",
+          "Fallback Position": "Accept the standard 10-day inspection period, but with a written commitment from the Seller for an expedited (e.g., within 5 business days) resolution plan for any rejected material."
+        },
+        "Delivery": {
+          "Ideal": "Free delivery to our site (DDP - Delivered Duty Paid).",
+          "Fallback Position": "Delivery costs are capped at a pre-agreed, reasonable flat fee, not to be calculated as a percentage of the order value."
+        }
+      }
+    }
+  }

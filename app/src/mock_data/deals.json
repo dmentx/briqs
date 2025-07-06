@@ -1,0 +1,233 @@
+[
+  {
+    "deal_id": 1001,
+    "buyer_id": 1,
+    "product": [
+      {
+        "excavator": {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "CAT 320 GC",
+          "brand": "Caterpillar",
+          "model": "320 GC",
+          "year": 2023,
+          "price": 215000.00,
+          "condition": "New",
+          "lifting_capacity_tons": 22.5,
+          "operating_weight_tons": 21.9,
+          "max_digging_depth_m": 6.7,
+          "bucket_capacity_m3": 1.19,
+          "seller_playbook": "briqs_seller_playbook_3.json"
+        },
+        "aluminum_sheet": null
+      }
+    ],
+    "contract_terms": "30-day payment terms, 2-year warranty, delivery within 14 days to construction site. Buyer responsible for transportation costs beyond 50km radius."
+  },
+  {
+    "deal_id": 1002,
+    "buyer_id": 1,
+    "product": [
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "b1e1a1c0-1a2b-4c3d-8e9f-1234567890ab",
+          "name": "Aluminum Sheet 6061-T6",
+          "seller_name": "CACME",
+          "price": 120.50,
+          "availability": 50,
+          "thickness_mm": 2.0,
+          "total_weight_kg": 24.0,
+          "seller_playbook": "briqs_seller_playbook_1.json"
+        }
+      },
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "c2f2b2d1-2b3c-5d4e-9f0a-2345678901bc",
+          "name": "Aluminum Sheet 5052-H32",
+          "seller_name": "BAMBI",
+          "price": 98.75,
+          "availability": 30,
+          "thickness_mm": 1.5,
+          "total_weight_kg": 18.5,
+          "seller_playbook": "briqs_seller_playbook_2.json"
+        }
+      }
+    ],
+    "contract_terms": "Net 15 payment terms, quantity discount of 5% applied for bulk order. Free delivery for orders over $500. Materials certified to industry standards."
+  },
+  {
+    "deal_id": 1003,
+    "buyer_id": 1,
+    "product": [
+      {
+        "excavator": {
+          "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+          "name": "Komatsu PC210LC-11",
+          "brand": "Komatsu",
+          "model": "PC210LC-11",
+          "year": 2022,
+          "price": 189000.00,
+          "condition": "Used",
+          "lifting_capacity_tons": 21.0,
+          "operating_weight_tons": 22.4,
+          "max_digging_depth_m": 6.8,
+          "bucket_capacity_m3": 1.05,
+          "seller_playbook": "briqs_seller_playbook_2.json"
+        },
+        "aluminum_sheet": null
+      },
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "e4b4d4f3-4d5e-7f6a-1b2c-4567890123de",
+          "name": "Aluminum Sheet 7075-T651",
+          "seller_name": "bS",
+          "price": 210.00,
+          "availability": 10,
+          "thickness_mm": 3.0,
+          "total_weight_kg": 36.0,
+          "seller_playbook": "briqs_seller_playbook_1.json"
+        }
+      }
+    ],
+    "contract_terms": "50% deposit upon signing, balance due on delivery. 6-month limited warranty on used equipment. Buyer inspection period of 48 hours post-delivery."
+  },
+  {
+    "deal_id": 1004,
+    "buyer_id": 2,
+    "product": [
+      {
+        "excavator": {
+          "id": "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+          "name": "Volvo EC220E",
+          "brand": "Volvo",
+          "model": "EC220E",
+          "year": 2023,
+          "price": 198000.00,
+          "condition": "New",
+          "lifting_capacity_tons": 22.1,
+          "operating_weight_tons": 22.8,
+          "max_digging_depth_m": 6.9,
+          "bucket_capacity_m3": 1.23,
+          "seller_playbook": "briqs_seller_playbook_3.json"
+        },
+        "aluminum_sheet": null
+      },
+      {
+        "excavator": {
+          "id": "6ba7b812-9dad-11d1-80b4-00c04fd430c8",
+          "name": "Hitachi ZX210LC-6",
+          "brand": "Hitachi",
+          "model": "ZX210LC-6",
+          "year": 2021,
+          "price": 175000.00,
+          "condition": "Used",
+          "lifting_capacity_tons": 21.3,
+          "operating_weight_tons": 21.4,
+          "max_digging_depth_m": 6.6,
+          "bucket_capacity_m3": 1.15,
+          "seller_playbook": "briqs_seller_playbook_2.json"
+        },
+        "aluminum_sheet": null
+      }
+    ],
+    "contract_terms": "Fleet purchase agreement with 10% volume discount. Payment via wire transfer within 7 days of delivery. Comprehensive maintenance package included for first year."
+  },
+  {
+    "deal_id": 1005,
+    "buyer_id": 2,
+    "product": [
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "f5c5e5a4-5e6f-8a7b-2c3d-5678901234ef",
+          "name": "Aluminum Sheet 2024-T3",
+          "seller_name": "GBA",
+          "price": 175.25,
+          "availability": 20,
+          "thickness_mm": 2.5,
+          "total_weight_kg": 30.0,
+          "seller_playbook": "briqs_seller_playbook_1.json"
+        }
+      },
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "a6d6f6b5-6f7a-9b8c-3d4e-6789012345fa",
+          "name": "Aluminum Sheet 1100-H14",
+          "seller_name": "PXSD",
+          "price": 70.00,
+          "availability": 100,
+          "thickness_mm": 0.8,
+          "total_weight_kg": 9.5,
+          "seller_playbook": "briqs_seller_playbook_3.json"
+        }
+      },
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "d3a3c3e2-3c4d-6e5f-0a1b-3456789012cd",
+          "name": "Aluminum Sheet 3003-H14",
+          "seller_name": "VBAS",
+          "price": 85.00,
+          "availability": 75,
+          "thickness_mm": 1.0,
+          "total_weight_kg": 12.0,
+          "seller_playbook": "briqs_seller_playbook_3.json"
+        }
+      }
+    ],
+    "contract_terms": "Specialized aerospace materials contract. COD terms with certified material test certificates. Expedited shipping within 72 hours. Materials must meet AS9100 quality standards."
+  },
+  {
+    "deal_id": 1006,
+    "buyer_id": 3,
+    "product": [
+      {
+        "excavator": {
+          "id": "6ba7b813-9dad-11d1-80b4-00c04fd430c8",
+          "name": "Liebherr R 920 Compact",
+          "brand": "Liebherr",
+          "model": "R 920 Compact",
+          "year": 2023,
+          "price": 225000.00,
+          "condition": "New",
+          "lifting_capacity_tons": 20.8,
+          "operating_weight_tons": 19.8,
+          "max_digging_depth_m": 6.5,
+          "bucket_capacity_m3": 1.10,
+          "seller_playbook": "briqs_seller_playbook_3.json"
+        },
+        "aluminum_sheet": null
+      },
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "c2f2b2d1-2b3c-5d4e-9f0a-2345678901bc",
+          "name": "Aluminum Sheet 5052-H32",
+          "seller_name": "BAMBI",
+          "price": 98.75,
+          "availability": 30,
+          "thickness_mm": 1.5,
+          "total_weight_kg": 18.5,
+          "seller_playbook": "briqs_seller_playbook_2.json"
+        }
+      },
+      {
+        "excavator": null,
+        "aluminum_sheet": {
+          "id": "b1e1a1c0-1a2b-4c3d-8e9f-1234567890ab",
+          "name": "Aluminum Sheet 6061-T6",
+          "seller_name": "CACME",
+          "price": 120.50,
+          "availability": 50,
+          "thickness_mm": 2.0,
+          "total_weight_kg": 24.0,
+          "seller_playbook": "briqs_seller_playbook_1.json"
+        }
+      }
+    ],
+    "contract_terms": "Mixed equipment and materials purchase. 25% deposit, 50% on delivery, 25% within 30 days. Extended warranty available for additional cost. Site preparation and training included."
+  }
+] 

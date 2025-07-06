@@ -11,7 +11,7 @@ import logging
 from typing import List
 
 # Import simplified models
-from src.models.core import Result, Excavator, AluminumSheet, Item
+from src.models.core import Result, Excavator, AluminumSheet, Item, RequestNegotiate
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -130,6 +130,52 @@ def transcribe_audio(audio_bytes: bytes, filename: str) -> dict:
         }
 
 
+@app.get("/api/featuredProducts")
+async def featured_products_endpoint(buyer_id: int):
+    """
+    Get featured products excluding already purchased items.
+    
+    Args:
+        buyer_id: The ID of the buyer
+        
+    Returns:
+        List of recommended products (excavators and aluminum sheets)
+        that the buyer hasn't purchased yet
+    """
+    try:
+        # Get purchased items for this buyer
+        purchased_item_ids = get_purchased_items(buyer_id)
+        logger.info(f"Buyer {buyer_id} has purchased {len(purchased_item_ids)} items")
+        
+        # Load all available products
+        all_excavators = load_excavators()
+        all_aluminum_sheets = load_aluminum_sheets()
+        
+        # Filter out already purchased excavators
+        recommended_excavators = []
+        for excavator in all_excavators:
+            if str(excavator.id) not in purchased_item_ids:
+                recommended_excavators.append(excavator)
+        
+        # Filter out already purchased aluminum sheets
+        recommended_aluminum_sheets = []
+        for aluminum_sheet in all_aluminum_sheets:
+            if str(aluminum_sheet.id) not in purchased_item_ids:
+                recommended_aluminum_sheets.append(aluminum_sheet)
+        
+        logger.info(f"Recommended {len(recommended_excavators)} excavators and {len(recommended_aluminum_sheets)} aluminum sheets for buyer {buyer_id}")
+        
+        return {
+            "buyer_id": buyer_id,
+            "recommended_excavators": recommended_excavators,
+            "recommended_aluminum_sheets": recommended_aluminum_sheets,
+            "total_recommendations": len(recommended_excavators) + len(recommended_aluminum_sheets)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in featured_products_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
+
 @app.post("/api/transcribe")
 async def transcribe_endpoint(file: UploadFile = File(...)):
     """
@@ -149,32 +195,65 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/offer")
-async def offer_endpoint(text_input: str):
+@app.post("/api/negotiate")
+async def negotiate_endpoint(input: str):
     """
     Process text input and return matched products
     """
     try:
 
+        request: RequestNegotiate = json.loads(input)
+
         response = openai_client.responses.parse(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             input=[
                 {"role": "system","content":"you are a helpful assistant find the following things, if you do not find these things set them to null"},
-                {"role": "user","content":text_input},
+                {"role": "user","content":request.text_input},
             ],
             text_format=Item
         )
         result = response.output_parsed
         item = get_item(result)
+        filtered_items = get_filtered_items(item)
+        playbook = get_playbook(request.buyer_id)
+        buyer_profile = get_buyer_profile(request.buyer_id)
+        if item.excavator:
+            result = Result(
+                product_type="excavator",
+                text_input=request.text_input,
+                list_excavator=filtered_items,
+                list_alu=[],
+                buyer_playbook=playbook,
+                buyer_profile=buyer_profile,
+            )
 
-        if item:
-            return get_filtered_items(item)
+#not yet implemented
+
+
         
         return []
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+def get_playbook(buyer_id):
+    #Load playbooks from json file as list of Playbook
+    base_path = os.path.dirname(__file__)
+    file_path = os.path.join(base_path, 'src/playbooks/briqs_buyer_playbook.json')
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    playbooks = [Playbook(**item) for item in data]
+    return playbooks.get(buyer_id)
+
+def get_buyer_profile(buyer_id):
+    #Load buyer profile from json file as list of Buyer
+    base_path = os.path.dirname(__file__)
+    file_path = os.path.join(base_path, 'src/buyer_profile/briqs_buyer_profile.json')
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    buyer_profile = [Buyer(**item) for item in data]
+    return buyer_profile.get(buyer_id)
 
 def load_excavators() -> List[Excavator]:
     """Loads excavators from mock data."""
@@ -239,6 +318,57 @@ def get_filtered_items(item):
     return matched_items
 
 
+def get_purchased_items(buyer_id: int) -> set[str]:
+    """
+    Extract all purchased item IDs for a given buyer.
+    
+    Args:
+        buyer_id: The ID of the buyer
+        
+    Returns:
+        Set of purchased item IDs (both excavators and aluminum sheets)
+    """
+    try:
+        base_path = os.path.dirname(__file__)
+        file_path = os.path.join(base_path, 'src/mock_data/deals.json')
+        
+        if not os.path.exists(file_path):
+            logger.warning(f"Deals data file not found at {file_path}")
+            return set()
+            
+        with open(file_path, 'r') as f:
+            deals_data = json.load(f)
+        
+        purchased_items = set()
+        
+        for deal in deals_data:
+            if deal.get('buyer_id') == buyer_id:
+                # Extract product IDs from the deal
+                products = deal.get('product', [])
+                for product_item in products:
+                    # Check for excavator
+                    if product_item.get('excavator'):
+                        excavator_id = product_item['excavator'].get('id')
+                        if excavator_id:
+                            purchased_items.add(excavator_id)
+                    
+                    # Check for aluminum sheet
+                    if product_item.get('aluminum_sheet'):
+                        aluminum_id = product_item['aluminum_sheet'].get('id')
+                        if aluminum_id:
+                            purchased_items.add(aluminum_id)
+        
+        logger.info(f"Found {len(purchased_items)} purchased items for buyer {buyer_id}")
+        return purchased_items
+        
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        logger.error(f"Could not load or parse deals.json: {e}")
+        return set()
+    except Exception as e:
+        logger.error(f"Error extracting purchased items: {e}")
+        return set()
+
+
 def get_item(item:Item):
     if item.excavator:
         return item.excavator
@@ -256,6 +386,21 @@ async def health_check():
         "groq_available": GROQ_AVAILABLE,
         "timestamp": datetime.utcnow().isoformat()
     }
+
+@app.get("/api/test/purchaseHistory/{buyer_id}")
+async def test_purchase_history(buyer_id: int):
+    """
+    Test endpoint to check purchase history for a buyer
+    """
+    try:
+        purchased_items = get_purchased_items(buyer_id)
+        return {
+            "buyer_id": buyer_id,
+            "purchased_items": list(purchased_items),
+            "total_purchased": len(purchased_items)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

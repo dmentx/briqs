@@ -1,0 +1,64 @@
+{
+    "Criteria": {
+      "Product": {
+        "Walk-Away-Price (per ton)": "[Insert Walk-Away Price, e.g., Market Benchmark + 3%]",
+        "Target Price (per ton)": "[Insert Target Price, e.g., Market Benchmark + 8%]",
+        "Starting Price (per ton)": "[Insert Starting Price, e.g., Market Benchmark + 10%]"
+      },
+      "Buyer": {
+        "Credit Worthiness": "Mandatory credit check performed by a third-party agency for all new customers or customers with a past due history.",
+        "History": "Is this a repeat customer? If so, review their full payment and service history. A perfect record is a significant positive factor.",
+        "risk_profile_definition": {
+          "low_risk": "Established company, repeat customer with excellent payment history, strong credit report.",
+          "medium_risk": "New customer with a solid credit report and verifiable references, or a repeat customer with a minor payment delay in the past.",
+          "high_risk": "New business, poor or limited credit history."
+        }
+      }
+    },
+    "Negotiation rules": [
+      "When a buyer asks for a concession, always ask for a concession in return. Frame it as 'If you can do X, then we can look at Y'.",
+      "Do not give too much away initially. We want to get the best conditions possible.",
+      "Always anchor the negotiation with the Target Price. Never reveal the Walk-Away-Price.",
+      "We open negotiations slightly above (Starting Price) this to allow for concessions.",
+      "Maintain a collaborative, problem-solving tone to build trust and support long-term customer retention.",
+      "If a buyer's initial offer is below the Walk-Away-Price, politely state it is not feasible and invite them to submit a more realistic offer. Do not counter-offer.",
+      "If a high-risk buyer refuses to accept our non-negotiable payment terms, stop the negotiation."
+    ],
+    "Tradables": {
+      "Primary Goal": "Achieve or exceed the Target Price per ton while securing favorable payment terms. Simultaneously, build the foundation for a long-term supply relationship, positioning us as a primary, reliable supplier for their ongoing raw material needs (customer retention).",
+      "Give (Low-cost to us)": [
+        "Waiving or reducing freight costs on orders exceeding a certain volume (e.g., >20 tons).",
+        "Waiving standard fees for special packaging or cutting, if operational impact is minimal.",
+        "Free provision of certified material test reports (MTRs)."
+      ],
+      "Get (High value to us)": [
+        "Irrevocable Letter of Credit (ILOC) or a Bank Guarantee.",
+        "Larger down payment (anything over our 30% standard requirement).",
+        "Shorter payment terms (e.g., Balance on Delivery instead of Net 30).",
+        "A firm, multi-quarter or annual supply agreement with volume commitments.",
+        "A signed, positive customer testimonial and permission to use their logo in our marketing materials."
+      ],
+      "Ideal & Acceptable Terms": {
+        "High risk buyer": {
+          "Payment Terms": {
+            "Goal": "100% of payment via cleared funds prior to delivery.",
+            "Fallback Position": "Minimum 50% non-refundable deposit to secure the material, with the remaining 50% paid via cleared funds before shipment."
+          },
+          "Collateral for Payment Default": {
+            "Goal": "Seller retains full legal title until payment is confirmed.",
+            "Fallback Position": "An Irrevocable Letter of Credit for the full purchase price is an acceptable alternative."
+          }
+        },
+        "Medium risk buyer": {
+          "Payment Terms": {
+            "Goal": "Minimum 30% down payment, balance due Net 30 from date of acceptance.",
+            "Fallback Position": "Increase down payment to 40-50% and/or change payment terms to 'Balance due upon delivery'. Alternatively, accept a Bank Guarantee for the outstanding 70% in lieu of the increased down payment."
+          }
+        },
+        "Low risk buyer": {
+          "Goal": "Net 30 payment terms with an approved Purchase Order.",
+          "Fallback Position": "If Net 60 terms are requested, we require a trade, such as a firm volume commitment for future orders or forgoing a volume discount."
+        }
+      }
+    }
+  }
