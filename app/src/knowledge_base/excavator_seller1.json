@@ -1,0 +1,120 @@
+{
+    "result": {
+        "product_type": "excavator",
+        "product_details": {
+            "seller_playbook": {
+                "Criteria": {
+                    "Product": {
+                        "Walk-Away-Price (USD)": 165000,
+                        "Target Price (USD)": 180000,
+                        "Starting Price": 185000
+                    },
+                    "Buyer": {
+                        "risk_profile_definition": {
+                            "low_risk": "Established company, repeat customer with excellent payment history, strong credit report. Credit Worthiness: 7 or more.",
+                            "medium_risk": "New customer with a solid credit report and verifiable references, or a repeat customer with a minor payment delay in the past. Credit Worthiness: 5 or 6.",
+                            "high_risk": "New business, poor or limited credit history. Credit Worthiness: 4 or less."
+                        }
+                    }
+                },
+                "Negotiation rules": [
+                    "When a buyer asks for a concession, always ask for a concession in return. Frame it as 'If you can do X, then we can look at Y'.",
+                    "Do not give too much away initially. We want to get the best conditions possible.",
+                    "Always anchor the negotiation with the Target Price. Never reveal the Walk-Away-Price.",
+                    "Never start the negotiation below your walk-away price.",
+                    "Never accept a deal that is below your walk-away price.",
+                    "We open negotiations slightly above (Starting Price) this to allow for concessions.",
+                    "Maintain a collaborative, problem-solving tone to build trust and support long-term customer retention.",
+                    "If a buyer's initial offer is below the Walk-Away-Price, politely state it is not feasible and invite them to submit a more realistic offer. Do not counter-offer.",
+                    "If a high-risk buyer refuses to accept our non-negotiable payment terms, stop the negotiation."
+                ],
+                "Tradables": {
+                    "Primary Goal": "Achieve or exceed the Target Price while securing ironclad payment terms. Simultaneously, build the foundation for a long-term relationship focused on service, parts, and future machine sales (customer retention).",
+                    "Give (Low-cost to us)": [
+                        "Free local delivery (within a 50-mile radius).",
+                        "One complimentary 250-hour service (labor only).",
+                        "Extended 6-month warranty on a non-critical component (e.g., operator seat, radio)."
+                    ],
+                    "Get (High value to us)": [
+                        "Irrevocable Letter of Credit (ILOC) or a Bank Guarantee.",
+                        "Larger down payment (anything over our minimum requirement).",
+                        "Shorter payment terms (e.g., Balance on Delivery instead of Net 30).",
+                        "Agreement to a comprehensive multi-year service and maintenance contract.",
+                        "A signed, positive customer testimonial and permission to use their logo in our marketing materials."
+                    ],
+                    "Ideal & Acceptable Terms": {
+                        "High risk buyer": {
+                            "Payment Terms": {
+                                "Goal": "100% of payment via cleared funds prior to delivery.",
+                                "Fallback Position": "Minimum 50% non-refundable deposit to secure the machine, with the remaining 50% paid via cleared funds before it leaves our yard. "
+                            },
+                            "Collateral for Payment Default": {
+                                "Goal": "Seller retains full legal title until payment is confirmed.",
+                                "Fallback Position": "An Irrevocable Letter of Credit for the remaining price is an acceptable alternative."
+                            }
+                        },
+                        "Medium risk buyer": {
+                            "Payment Terms": {
+                                "Goal": "Minimum 30% down payment, balance due Net 30. Late payments accrue interest at 1.5% per month. Liability capped at the equipment purchase price.",
+                                "Fallback Position": "Increase down payment to 40% and change payment terms to 'Balance due upon delivery'. Alternatively, accept a Bank Guarantee for the outstanding 70% in lieu of the increased down payment."
+                            }
+                        },
+                        "Low risk buyer": {
+                            "Goal": "Net 30 payment terms with an approved Purchase Order.",
+                            "Fallback Position": "If Net 60 terms are requested, we require a trade, such as the customer agreeing to a 2-year preventative maintenance contract or forgoing a discount."
+                        }
+                    }
+                }
+            },
+            "buyer_playbook": {
+                "Negotiation Strategy": [
+                    "Never reveal your Maximum Budget. Always anchor the negotiation to your Target Purchase Price or lower.",
+                    "An aggressive but realistic opening offer can significantly lower the final price.",
+                    "Question the value of every seller 'concession'. Unbundle their packages to understand the true cost and benefit of each item.",
+                    "Always bundle your requests. For example, 'If you can meet our price, we'll also need you to include the extended warranty and free delivery.'",
+                    "Always be professional and polite, but be prepared to walk away if your core requirements on price and terms are not met."
+                ],
+                "Tradables": {
+                    "Primary Goal": "Achieve the lowest possible Total Cost of Ownership (TCO). The sticker price is important, but favorable terms, an extended warranty, and included service are equally critical for minimizing long-term expenses.",
+                    "Get (High value to us)": [
+                        "A significant discount off the list price.",
+                        "A comprehensive, multi-year warranty (especially on powertrain and hydraulics).",
+                        "The first 2-3 scheduled maintenance services included (parts and labor).",
+                        "Favorable payment terms (e.g., Net 60 or Net 90) to improve cash flow.",
+                        "Free delivery to our primary worksite."
+                    ],
+                    "Give (Low-cost to us)": [
+                        "A public, positive customer testimonial or case study.",
+                        "A commitment to a future parts & service contract (if the rates are competitive).",
+                        "Flexibility on the delivery date (if our project schedule allows).",
+                        "A slightly larger-than-standard down payment in exchange for a major price discount or extended warranty."
+                    ]
+                },
+                "Ideal & Acceptable Terms": {
+                    "Price": {
+                        "Target Purchase Price (USD)": 165000,
+                        "Maximum Budget (USD)": 175000,
+                        "Ideal": "A final price at or below our Target Purchase Price of $165,000.",
+                        "Fallback Position": "A price up to our Maximum Budget of $175,000, but only if it includes significant 'Gets' like a 3-year warranty."
+                    },
+                    "Payment Terms": {
+                        "Ideal": "Net 60 terms with 0% down payment required.",
+                        "Fallback Position": "Net 30 terms with no more than a 5% down payment required to secure the machine."
+                    },
+                    "Warranty": {
+                        "Ideal": "3-year / 3,000-hour comprehensive warranty. First two scheduled services (250hr, 500hr) fully included.",
+                        "Fallback Position": "Minimum 2-year / 2,000-hour powertrain warranty. First scheduled service included (labor only)."
+                    },
+                    "Delivery": {
+                        "Ideal": "Free delivery to our site",
+                        "Fallback Position": "Delivery cost capped at a pre-agreed, reasonable flat fee."
+                    }
+                }
+            }
+        },
+        "buyer_profile": {
+            "Credit Worthiness": 8,
+            "Recurring Customer": true
+        }
+    }
+}
