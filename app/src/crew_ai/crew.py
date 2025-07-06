@@ -504,25 +504,27 @@ def run_final_mediation(negotiation_history: list[str], combined_playbook: dict,
 
     # The Mediator's task is very specific and detailed here.
     mediation_task = Task(
-        description=f"""
-        You are a mediator for a failed negotiation. Your task is to propose a final, acceptable compromise.
-        
+       description=f"""
+        You are a mediator for a failed negotiation. Your task is to propose a final, acceptable compromise based on the parties negotiation playbooks. If any of the playbooks does not contain information on one of the disputed terms, refer to the applicable terms of the backup terms to fill in the gaps for the respective party.
+       
         **Combined Playbook (Buyer & Seller Goals):**
         {json.dumps(combined_playbook, indent=2)}
-
+ 
         **Backup Terms (for reference):**
         {json.dumps(backup_terms, indent=2)}
-
+ 
         **Full Negotiation History:**
         ---
         {history_str}
         ---
-
+ 
         Analyze the conflicts and playbooks. Propose a compromise or declare a stalemate.
+        IMPORTANT: Only propose prices that lay beyond the sellers Walk Away Price but below the Maximum Budget. If this is not possible, the mediation fails.
         Your output MUST be a JSON object with two keys: "decision" and "proposal_text".
         - "decision": "PROPOSE_COMPROMISE" or "DECLARE_STALEMATE".
         - "proposal_text": Contains the proposal details or the reason for the stalemate.
-        """,
+        """
+ ,
         agent=mediator_agent,
         expected_output='A JSON object with "decision" and "proposal_text" keys.'
     )
@@ -552,7 +554,7 @@ def run_negotiation(max_rounds=4):
 
     # 1. Load configurations
     print("📚 Loading configurations...")
-    combined_playbook = load_playbook("src/knowledge_base/excavator_seller1.json")
+    combined_playbook = load_playbook("src/knowledge_base/excavator_seller4.json")
     backup_terms = load_playbook("src/knowledge_base/briqs_backup_terms_excavator.json")
     with open('src/config_crewai/agents.yaml', 'r') as f:
         agents_config = yaml.safe_load(f)
