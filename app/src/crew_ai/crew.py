@@ -45,10 +45,7 @@ def load_playbook(playbook_path):
 
 def build_buyer_task_description(playbook, contract_type, previous_message=None):
     """Builds the buyer's task, optionally including the seller's last message."""
-    # (Your original `build_buyer_task_description` logic is excellent, so we'll just wrap it)
-    base_description = "..." # Imagine your full description builder logic here. For brevity.
-    
-    # For this example, let's use a simplified version. You should keep your detailed one.
+
     base_description = f"""
     You are the buyer. Your goal is to secure the best deal for a {contract_type}.
     Refer to your playbook for strategy, goals, and terms.
@@ -77,8 +74,7 @@ def build_buyer_task_description(playbook, contract_type, previous_message=None)
 
 def build_seller_task_description(playbook, buyer_risk_profile, buyer_message, contract_type):
     """Builds the seller's task based on the buyer's message."""
-    # (Your original `build_seller_task_description` logic is excellent)
-    # For this example, a simplified version. You should keep your detailed one.
+
     base_description = f"""
     You are the seller. Your goal is to maximize revenue for a {contract_type}.
     The buyer has a '{buyer_risk_profile}' profile.
@@ -144,7 +140,9 @@ def check_deal_status(negotiation_history: list[str], buyer_playbook: dict, sell
     result = crew.kickoff()
     
     print(f"⚖️  Adjudicator's verdict: {result}")
-    return result.strip().upper()
+    # Extract the actual text from the CrewOutput object
+    result_text = str(result.raw) if hasattr(result, 'raw') else str(result)
+    return result_text.strip().upper()
 
 # ====== NEGOTIATION SCENARIO ======
 def run_negotiation(contract_type="heavy_equipment", buyer_risk_profile="low_risk", max_rounds=4):
@@ -156,10 +154,10 @@ def run_negotiation(contract_type="heavy_equipment", buyer_risk_profile="low_ris
 
     # 1. Load Playbooks and Agent Configs
     print("📚 Loading playbooks and agent configurations...")
-    buyer_playbook = load_playbook("buyer.json")
-    seller_playbook = load_playbook("seller.json")
+    buyer_playbook = load_playbook("src/knowledge_base/briqs_buyer_playbook.json")
+    seller_playbook = load_playbook("src/knowledge_base/briqs_seller_playbook_1.json")
     
-    with open('agents.yaml', 'r') as f:
+    with open('src/config_crewai/agents.yaml', 'r') as f:
         agents_config = yaml.safe_load(f)
 
     if not all([buyer_playbook, seller_playbook, agents_config]):
