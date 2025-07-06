@@ -92,10 +92,10 @@
                 },
                 "Ideal & Acceptable Terms": {
                     "Price": {
-                        "Target Purchase Price (USD)": 160000,
-                        "Maximum Budget (USD)": 170000,
-                        "Ideal": "A final price at or below our Target Purchase Price of $160,000.",
-                        "Fallback Position": "A price up to our Maximum Budget of $170,000, but only if it includes significant 'Gets' like a 3-year warranty."
+                        "Target Purchase Price (USD)": 165000,
+                        "Maximum Budget (USD)": 175000,
+                        "Ideal": "A final price at or below our Target Purchase Price of $165,000.",
+                        "Fallback Position": "A price up to our Maximum Budget of $175,000, but only if it includes significant 'Gets' like a 3-year warranty."
                     },
                     "Payment Terms": {
                         "Ideal": "Net 60 terms with 0% down payment required.",

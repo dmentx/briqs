@@ -221,6 +221,8 @@ def build_buyer_task_description(playbook, previous_message=None, mediation_prop
         
         You MUST address this proposal in your next response. You can choose to accept it, reject it, or use it as a basis for a new counter-offer.
         You should consider accepting the mediator's proposal because we are trying to reach a deal.
+
+        You should really consider accepting the mediator's proposal because we are trying to reach a deal.
         ********************************
         """
 
@@ -411,6 +413,8 @@ def build_seller_task_description(playbook, buyer_message, mediation_proposal=No
 
         You MUST address this proposal in your next response. You can choose to accept it, reject it, or use it as a basis for a new counter-offer.
         You should consider accepting the mediator's proposal because we are trying to reach a deal.
+
+        You should really consider accepting the mediator's proposal because we are trying to reach a deal.
         ********************************
         """
 
@@ -430,15 +434,15 @@ def build_seller_task_description(playbook, buyer_message, mediation_proposal=No
 def adjudicate_round(last_buyer_offer: str, last_seller_response: str) -> str:
     """
     Uses a dedicated Adjudicator agent to determine if a deal has been reached.
-    Returns "DEAL" or "CONTINUE".
+    Always returns JSON string - either with agreed terms or continuation status.
     """
     print("\n⚖️  Adjudicator is checking for a deal...")
     
     # The adjudicator agent is simple and focused
     adjudicator_agent = Agent(
         role="Deal Adjudicator",
-        goal="Analyze the last two messages in a negotiation to determine if an explicit deal has been reached.",
-        backstory="You are an impartial judge. Your only job is to compare an offer and a response to see if they are in perfect agreement. You are strict; a counter-offer is NOT a deal.",
+        goal="Analyze the last two messages in a negotiation to determine if an explicit deal has been reached and return a structured JSON response.",
+        backstory="You are an impartial judge. Your only job is to compare an offer and a response to see if they are in perfect agreement. You are strict; a counter-offer is NOT a deal. You always return JSON format responses.",
         llm=llm_llama4,
         verbose=True
     )
@@ -462,18 +466,55 @@ def adjudicate_round(last_buyer_offer: str, last_seller_response: str) -> str:
         - If the seller's message is a clear, unconditional "I accept your offer", "Deal", or similar, AND it does not introduce new terms or change existing ones, then a deal has been reached.
         - If the seller's message, even if it contains the words "DEAL REACHED", is actually a COUNTER-OFFER with different terms (e.g., a different price, different payment terms), it is NOT a deal.
 
-        Based on this strict analysis, respond with a single word: DEAL or CONTINUE.
+        **CRITICAL: YOU MUST RESPOND ONLY WITH VALID JSON FORMAT. NO OTHER TEXT.**
+        
+        If a deal IS reached, respond with ONLY this JSON structure:
+        {{
+          "status": "DEAL_REACHED",
+          "price": "$X,XXX",
+          "payment_terms": "...",
+          "warranty": "...",
+          "delivery": "...",
+          "maintenance_services": "...",
+          "additional_terms": "..."
+        }}
+        
+        If NO deal is reached, respond with ONLY this JSON structure:
+        {{
+          "status": "NO_DEAL_REACHED",
+          "reason": "Explain why no deal was reached - e.g., 'Seller made counter-offer with different price', 'Terms not fully agreed', etc.. State details of the negotiation and the reason for the stalemate. Be specific and detailed."
+        }}
+        
+        DO NOT include any text before or after the JSON. DO NOT include explanations. ONLY return the JSON object.
+        Extract the agreed terms from the buyer's offer and seller's acceptance when a deal is reached. Include all relevant terms discussed.
         """,
         agent=adjudicator_agent,
-        expected_output="A single word: DEAL or CONTINUE."
+        expected_output="ONLY a valid JSON object with either deal terms or continuation status. No other text."
     )
 
     crew = Crew(agents=[adjudicator_agent], tasks=[adjudicator_task], process=Process.sequential)
     verdict = crew.kickoff()
     
-    clean_verdict = verdict.raw.strip().upper()
-    print(f"⚖️  Adjudicator's Verdict: {clean_verdict}")
-    return clean_verdict
+    clean_verdict = verdict.raw.strip()
+    print(f"⚖️  Adjudicator's Raw Response: {clean_verdict}")
+    
+    # Try to extract JSON from the response
+    try:
+        json_match = re.search(r'\{.*\}', clean_verdict, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            # Validate it's proper JSON
+            parsed_json = json.loads(json_str)
+            print("⚖️  Adjudicator's JSON Response: {json_str}")
+            return json_str
+        else:
+            # If no JSON found, create a default continue response
+            print("⚖️  No JSON found in response, using default continue")
+            return '{"status": "CONTINUE", "reason": "Adjudicator did not return JSON format"}'
+    except (json.JSONDecodeError, TypeError) as e:
+        # If JSON parsing fails, return a default continue response
+        print(f"⚖️  JSON parsing failed: {e}")
+        return '{"status": "CONTINUE", "reason": "Adjudicator response parsing failed"}'
 
 def run_final_mediation(negotiation_history: list[str], combined_playbook: dict, backup_terms: dict) -> dict:
     """Invokes a Mediator agent to analyze a failed negotiation and propose a final compromise."""
@@ -575,10 +616,30 @@ def run_negotiation(max_rounds=4):
         
         # Adjudicator's Turn to Check for a Deal
         verdict = adjudicate_round(last_buyer_message, seller_response)
-        if verdict == "DEAL":
-            deal_reached = True
-            last_message = seller_response # The accepting message is the final one
-            break
+        try:
+            verdict_json = json.loads(verdict)
+            if verdict_json.get("status") == "DEAL_REACHED":
+                deal_reached = True
+                print("\n🎉 DEAL REACHED!")
+                print("=" * 50)
+                print("\nFINAL AGREED TERMS:")
+                print(json.dumps(verdict_json, indent=2))
+                last_message = f"DEAL REACHED: {json.dumps(verdict_json, indent=2)}"
+                negotiation_history.append(f"ADJUDICATOR: {last_message}")
+                break
+            else:
+                # Continue negotiation - log the reason if provided
+                reason = verdict_json.get("reason", "No specific reason provided")
+                print(f"⚖️  Continuing negotiation: {reason}")
+                print(f"⚖️  Adjudicator's assessment: {json.dumps(verdict_json, indent=2)}")
+                negotiation_history.append(f"ADJUDICATOR: CONTINUE - {json.dumps(verdict_json, indent=2)}")
+        except (json.JSONDecodeError, TypeError) as e:
+            # If JSON parsing fails, assume continue
+            print(f"⚖️  JSON parsing failed: {e}")
+            print(f"⚖️  Raw response: {verdict}")
+            default_continue = '{"status": "CONTINUE", "reason": "Adjudicator response parsing failed"}'
+            negotiation_history.append(f"ADJUDICATOR: CONTINUE - {default_continue}")
+            pass
 
         # If it's the last round, don't let the buyer respond again, just exit the loop
         if round_number == max_rounds:
@@ -603,12 +664,12 @@ def run_negotiation(max_rounds=4):
 
             print("\n--- FINAL MEDIATION ROUND ---")
             
-            final_buyer_task = Task(description=build_buyer_task_description(combined_playbook, "The Mediator has made a final proposal.", formatted_proposal), agent=buyer_agent, expected_output="A JSON object with your final offer.")
+            final_buyer_task = Task(description=build_buyer_task_description(combined_playbook, "\n\nThe Mediator has made a final proposal. You should really consider accepting it very seriously.\n\n Mediator's offer: \n\n", formatted_proposal), agent=buyer_agent, expected_output="A JSON object with your final offer.")
             buyer_final_word = Crew(agents=[buyer_agent], tasks=[final_buyer_task]).kickoff()
             negotiation_history.append(f"BUYER (Final Word): {buyer_final_word}")
             print("\n" + "="*20 + " BUYER'S FINAL WORD " + "="*20); print(buyer_final_word)
 
-            final_seller_task = Task(description=build_seller_task_description(combined_playbook, buyer_final_word, formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final decision.")
+            final_seller_task = Task(description=build_seller_task_description(combined_playbook, "\n\nYou will receive the buyer's final word. You should really consider accepting it very seriously. The buyer has made a final offer based on a mediation proposal, which is considered to be fair for both parties.\n\n" + str(buyer_final_word) + "\n\nMeditator's offer:\n\n", formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final decision.")
             seller_final_word = Crew(agents=[seller_agent], tasks=[final_seller_task]).kickoff()
             negotiation_history.append(f"SELLER (Final Word): {seller_final_word}")
             print("\n" + "="*20 + " SELLER'S FINAL WORD " + "="*20); print(seller_final_word)
@@ -617,33 +678,40 @@ def run_negotiation(max_rounds=4):
             print("\n--- FINAL ADJUDICATION ---")
             final_verdict = adjudicate_round(buyer_final_word, seller_final_word)
             
-            if final_verdict == "DEAL":
-                deal_reached = True
-                # Extract and display the final agreed terms
-                print("\n🎉 DEAL REACHED!")
+            try:
+                final_verdict_json = json.loads(final_verdict)
+                if final_verdict_json.get("status") == "DEAL_REACHED":
+                    deal_reached = True
+                    # Extract and display the final agreed terms
+                    print("\n🎉 DEAL REACHED!")
+                    print("=" * 50)
+                    print("\nFINAL AGREED TERMS:")
+                    
+                    # The final_verdict now contains the JSON terms directly from the adjudicator
+                    print(json.dumps(final_verdict_json, indent=2))
+                    last_message = f"DEAL REACHED: {json.dumps(final_verdict_json, indent=2)}"
+                    negotiation_history.append(f"ADJUDICATOR: {last_message}")
+                else:
+                    # No deal reached - get the reason from the JSON and display the full JSON
+                    reason = final_verdict_json.get("reason", "No agreement reached after mediation")
+                    print("\n❌ NEGOTIATION FAILED")
+                    print("=" * 50)
+                    print("\nADJUDICATOR'S FINAL ASSESSMENT:")
+                    print(json.dumps(final_verdict_json, indent=2))
+                    last_message = f"NEGOTIATION FAILED: {json.dumps(final_verdict_json, indent=2)}"
+                    negotiation_history.append(f"ADJUDICATOR: {last_message}")
+            except (json.JSONDecodeError, TypeError) as e:
+                # If JSON parsing fails, assume no deal
+                print("\n❌ NEGOTIATION FAILED")
                 print("=" * 50)
-                print("\nFINAL AGREED TERMS:")
-                
-                # Try to extract JSON from seller's final word (assuming it contains the agreed terms)
-                try:
-                    json_match = re.search(r'\{.*\}', str(seller_final_word), re.DOTALL)
-                    if json_match:
-                        json_str = json_match.group(0)
-                        final_terms = json.loads(json_str)
-                        print(json.dumps(final_terms, indent=2))
-                        last_message = f"DEAL REACHED: {json.dumps(final_terms, indent=2)}"
-                    else:
-                        last_message = f"DEAL REACHED: {seller_final_word}"
-                except (json.JSONDecodeError, TypeError):
-                    last_message = f"DEAL REACHED: {seller_final_word}"
-                
-                negotiation_history.append(f"ADJUDICATOR: {last_message}")
-            else:
-                last_message = "NEGOTIATION FAILED: No agreement reached after mediation."
+                print(f"\nADJUDICATOR RESPONSE PARSING ERROR: {e}")
+                print(f"RAW RESPONSE: {final_verdict}")
+                last_message = f"NEGOTIATION FAILED: {{'status': 'CONTINUE', 'reason': 'Adjudicator response format unclear', 'raw_response': '{final_verdict}'}}"
                 negotiation_history.append(f"ADJUDICATOR: {last_message}")
         else:
             failure_reason = mediation_result.get('proposal_text') or 'Mediator declared a stalemate.'
-            last_message = f"NEGOTIATION FAILED: {failure_reason}"
+            failure_json = json.dumps({"status": "CONTINUE", "reason": failure_reason}, indent=2)
+            last_message = f"NEGOTIATION FAILED: {failure_json}"
             negotiation_history.append(f"MEDIATOR: {last_message}")
 
     # 4. Final Outcome
@@ -652,8 +720,30 @@ def run_negotiation(max_rounds=4):
     print("\nFull Negotiation History:")
     for entry in negotiation_history:
         print(f"- {entry}\n")
+    
     print("\nFinal Outcome:")
-    print(last_message)
+    print("=" * 50)
+    if last_message.startswith("DEAL REACHED:"):
+        print("🎉 DEAL SUCCESSFULLY REACHED!")
+        # Extract and display the JSON part nicely
+        json_part = last_message.replace("DEAL REACHED: ", "")
+        try:
+            final_terms = json.loads(json_part)
+            print("\nFinal Agreed Terms:")
+            print(json.dumps(final_terms, indent=2))
+        except (json.JSONDecodeError, TypeError):
+            print(f"\n{last_message}")
+    else:
+        print("❌ NEGOTIATION FAILED")
+        # Extract and display the JSON part nicely
+        json_part = last_message.replace("NEGOTIATION FAILED: ", "")
+        try:
+            failure_details = json.loads(json_part)
+            print("\nFailure Details:")
+            print(json.dumps(failure_details, indent=2))
+        except (json.JSONDecodeError, TypeError):
+            print(f"\n{last_message}")
+    print("=" * 50)
 
 
 if __name__ == "__main__":
