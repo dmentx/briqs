@@ -219,8 +219,8 @@ def build_buyer_task_description(playbook, previous_message=None, mediation_prop
         A neutral mediator has reviewed the prior round's deadlock and proposed the following compromise:
         '{mediation_proposal}'
         
-        You MUST address this proposal in your next response. You can choose to accept it,
-        reject it, or use it as a basis for a new counter-offer.
+        You MUST address this proposal in your next response. You can choose to accept it, reject it, or use it as a basis for a new counter-offer.
+        You should consider accepting the mediator's proposal because we are trying to reach a deal.
         ********************************
         """
 
@@ -386,7 +386,7 @@ def build_seller_task_description(playbook, buyer_message, mediation_proposal=No
     base_description = f"""
     You are the seller of {product_type}. Your goal is to secure the best deal based on your contract negotiation playbook.
     Refer to this playbook for 1. acceptable price range, 2. negotiation rules, 3. tradables that you want from the other party or are willing to give in exchange for concessions and 4. ideal/acceptable contract terms.
-    The buyer has a buyer risk profile with the following characteristics: {buyer_profile_desc}. Choose the correct contract terms based on the buyers risk score.
+    The buyer has a buyer risk profile with the following characteristics: {buyer_profile_desc}. Choose the correct contract terms based on the buyers risk score. Calculate the buyer risk profile based on 'credit worthiness' and 'recurring customer'. Buyer risk can be low_risk, medium_risk, high_risk.
 
     Your playbook details: 
     
@@ -409,8 +409,8 @@ def build_seller_task_description(playbook, buyer_message, mediation_proposal=No
         A neutral mediator has reviewed the prior round's deadlock and proposed the following compromise:
         '{mediation_proposal}'
 
-        You MUST address this proposal in your next response. You can choose to accept it,
-        reject it, or use it as a basis for a new counter-offer.
+        You MUST address this proposal in your next response. You can choose to accept it, reject it, or use it as a basis for a new counter-offer.
+        You should consider accepting the mediator's proposal because we are trying to reach a deal.
         ********************************
         """
 
@@ -426,6 +426,54 @@ def build_seller_task_description(playbook, buyer_message, mediation_proposal=No
 
     Now, provide your response.
     """
+
+def adjudicate_round(last_buyer_offer: str, last_seller_response: str) -> str:
+    """
+    Uses a dedicated Adjudicator agent to determine if a deal has been reached.
+    Returns "DEAL" or "CONTINUE".
+    """
+    print("\n⚖️  Adjudicator is checking for a deal...")
+    
+    # The adjudicator agent is simple and focused
+    adjudicator_agent = Agent(
+        role="Deal Adjudicator",
+        goal="Analyze the last two messages in a negotiation to determine if an explicit deal has been reached.",
+        backstory="You are an impartial judge. Your only job is to compare an offer and a response to see if they are in perfect agreement. You are strict; a counter-offer is NOT a deal.",
+        llm=llm_llama4,
+        verbose=True
+    )
+
+    adjudicator_task = Task(
+        description=f"""
+        Analyze the following buyer offer and seller response.
+
+        **Buyer's Last Offer:**
+        ---
+        {last_buyer_offer}
+        ---
+
+        **Seller's Response to that Offer:**
+        ---
+        {last_seller_response}
+        ---
+
+        **Your Task:**
+        Has the seller explicitly and unconditionally accepted the buyer's exact offer?
+        - If the seller's message is a clear, unconditional "I accept your offer", "Deal", or similar, AND it does not introduce new terms or change existing ones, then a deal has been reached.
+        - If the seller's message, even if it contains the words "DEAL REACHED", is actually a COUNTER-OFFER with different terms (e.g., a different price, different payment terms), it is NOT a deal.
+
+        Based on this strict analysis, respond with a single word: DEAL or CONTINUE.
+        """,
+        agent=adjudicator_agent,
+        expected_output="A single word: DEAL or CONTINUE."
+    )
+
+    crew = Crew(agents=[adjudicator_agent], tasks=[adjudicator_task], process=Process.sequential)
+    verdict = crew.kickoff()
+    
+    clean_verdict = verdict.raw.strip().upper()
+    print(f"⚖️  Adjudicator's Verdict: {clean_verdict}")
+    return clean_verdict
 
 def run_final_mediation(negotiation_history: list[str], combined_playbook: dict, backup_terms: dict) -> dict:
     """Invokes a Mediator agent to analyze a failed negotiation and propose a final compromise."""
@@ -480,7 +528,8 @@ def run_final_mediation(negotiation_history: list[str], combined_playbook: dict,
 # ====== NEGOTIATION SCENARIO ======
 def run_negotiation(max_rounds=4):
     """
-    Runs a negotiation that can proceed to a final mediation stage if no deal is reached.
+    Runs a negotiation with a neutral Adjudicator checking each round,
+    and a final mediation stage if no deal is reached.
     """
     if not llm_llama4: return
 
@@ -488,13 +537,15 @@ def run_negotiation(max_rounds=4):
     print("📚 Loading configurations...")
     combined_playbook = load_playbook("src/knowledge_base/excavator_seller1.json")
     backup_terms = load_playbook("src/knowledge_base/briqs_backup_terms_excavator.json")
-    with open('src/config_crewai/agents.yaml', 'r') as f: agents_config = yaml.safe_load(f)
+    with open('src/config_crewai/agents.yaml', 'r') as f:
+        agents_config = yaml.safe_load(f)
     if not all([combined_playbook, backup_terms, agents_config]): return
     print("✅ Configurations loaded.")
 
-    # Create calculator tool instance (optional)
+    # Create the Calculator tool instance
     calculator_tool = CalculatorTool()
     
+    # Give the agents the calculator tool
     buyer_agent = Agent(**agents_config['buyer_agent'], llm=llm_llama4, verbose=True)
     seller_agent = Agent(**agents_config['seller_agent'], llm=llm_llama4, verbose=True)
 
@@ -510,42 +561,86 @@ def run_negotiation(max_rounds=4):
     negotiation_history.append(f"BUYER: {last_message}")
     print("\n" + "="*20 + " BUYER'S RESPONSE " + "="*20); print(last_message)
     
-    # Main Loop
+    # Main Loop with Adjudicator
     for round_number in range(1, max_rounds + 1):
         print(f"\n--- ROUND {round_number + 1} ---")
         
-        task = Task(description=build_seller_task_description(combined_playbook, last_message), agent=seller_agent, expected_output="A JSON object with your counter-offer and justification.")
-        last_message = Crew(agents=[seller_agent], tasks=[task]).kickoff()
-        negotiation_history.append(f"SELLER: {last_message}")
-        print("\n" + "="*20 + " SELLER'S RESPONSE " + "="*20); print(last_message)
-        if "DEAL REACHED" in str(last_message).upper(): deal_reached = True; break
+        last_buyer_message = last_message # Store the buyer's message for adjudication
 
-        task = Task(description=build_buyer_task_description(combined_playbook, last_message), agent=buyer_agent, expected_output="A JSON object with your offer and justification.")
+        # Seller's Turn
+        task = Task(description=build_seller_task_description(combined_playbook, last_buyer_message), agent=seller_agent, expected_output="A JSON object with your counter-offer and justification.")
+        seller_response = Crew(agents=[seller_agent], tasks=[task]).kickoff()
+        negotiation_history.append(f"SELLER: {seller_response}")
+        print("\n" + "="*20 + " SELLER'S RESPONSE " + "="*20); print(seller_response)
+        
+        # Adjudicator's Turn to Check for a Deal
+        verdict = adjudicate_round(last_buyer_message, seller_response)
+        if verdict == "DEAL":
+            deal_reached = True
+            last_message = seller_response # The accepting message is the final one
+            break
+
+        # If it's the last round, don't let the buyer respond again, just exit the loop
+        if round_number == max_rounds:
+            break
+
+        # Buyer's Turn to respond to the counter-offer
+        task = Task(description=build_buyer_task_description(combined_playbook, seller_response), agent=buyer_agent, expected_output="A JSON object with your offer and justification.")
         last_message = Crew(agents=[buyer_agent], tasks=[task]).kickoff()
         negotiation_history.append(f"BUYER: {last_message}")
         print("\n" + "="*20 + " BUYER'S RESPONSE " + "="*20); print(last_message)
-        if "DEAL REACHED" in str(last_message).upper(): deal_reached = True; break
-    
-    # 3. Mediation Phase (if necessary)
+
+    # 3. Mediation Phase (if no deal was reached in the main loop)
     if not deal_reached:
         print("\n🏁 Main negotiation concluded without a deal.")
         mediation_result = run_final_mediation(negotiation_history, combined_playbook, backup_terms)
         
         if mediation_result and mediation_result.get("decision") == "PROPOSE_COMPROMISE":
+            # This part of your code for the final mediation round is already correct.
             proposal_data = mediation_result.get("proposal_text") or mediation_result.get("proposal")
             formatted_proposal = json.dumps(proposal_data, indent=2) if isinstance(proposal_data, dict) else str(proposal_data)
             negotiation_history.append(f"MEDIATOR: {formatted_proposal}")
 
             print("\n--- FINAL MEDIATION ROUND ---")
             
-            final_buyer_task = Task(description=build_buyer_task_description(combined_playbook, "The Mediator has made a final proposal.", formatted_proposal), agent=buyer_agent, expected_output="A JSON object with your final offer and justification.")
+            final_buyer_task = Task(description=build_buyer_task_description(combined_playbook, "The Mediator has made a final proposal.", formatted_proposal), agent=buyer_agent, expected_output="A JSON object with your final offer.")
             buyer_final_word = Crew(agents=[buyer_agent], tasks=[final_buyer_task]).kickoff()
             negotiation_history.append(f"BUYER (Final Word): {buyer_final_word}")
             print("\n" + "="*20 + " BUYER'S FINAL WORD " + "="*20); print(buyer_final_word)
 
-            final_seller_task = Task(description=build_seller_task_description(combined_playbook, buyer_final_word, formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final counter-offer and justification.")
-            last_message = Crew(agents=[seller_agent], tasks=[final_seller_task]).kickoff()
-            negotiation_history.append(f"SELLER (Final Word): {last_message}")
+            final_seller_task = Task(description=build_seller_task_description(combined_playbook, buyer_final_word, formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final decision.")
+            seller_final_word = Crew(agents=[seller_agent], tasks=[final_seller_task]).kickoff()
+            negotiation_history.append(f"SELLER (Final Word): {seller_final_word}")
+            print("\n" + "="*20 + " SELLER'S FINAL WORD " + "="*20); print(seller_final_word)
+            
+            # Final adjudication after mediation round
+            print("\n--- FINAL ADJUDICATION ---")
+            final_verdict = adjudicate_round(buyer_final_word, seller_final_word)
+            
+            if final_verdict == "DEAL":
+                deal_reached = True
+                # Extract and display the final agreed terms
+                print("\n🎉 DEAL REACHED!")
+                print("=" * 50)
+                print("\nFINAL AGREED TERMS:")
+                
+                # Try to extract JSON from seller's final word (assuming it contains the agreed terms)
+                try:
+                    json_match = re.search(r'\{.*\}', str(seller_final_word), re.DOTALL)
+                    if json_match:
+                        json_str = json_match.group(0)
+                        final_terms = json.loads(json_str)
+                        print(json.dumps(final_terms, indent=2))
+                        last_message = f"DEAL REACHED: {json.dumps(final_terms, indent=2)}"
+                    else:
+                        last_message = f"DEAL REACHED: {seller_final_word}"
+                except (json.JSONDecodeError, TypeError):
+                    last_message = f"DEAL REACHED: {seller_final_word}"
+                
+                negotiation_history.append(f"ADJUDICATOR: {last_message}")
+            else:
+                last_message = "NEGOTIATION FAILED: No agreement reached after mediation."
+                negotiation_history.append(f"ADJUDICATOR: {last_message}")
         else:
             failure_reason = mediation_result.get('proposal_text') or 'Mediator declared a stalemate.'
             last_message = f"NEGOTIATION FAILED: {failure_reason}"
