@@ -388,8 +388,20 @@ def get_filtered_items(item):
         # Check if brands match
         if db_brand and _matches_brand(str(db_brand), str(filter_brand)):
             matched_items.append(db_item)
+
+    for item in matched_items:
+        seller_playbook = get_seller_playbook(item.seller_playbook)
+        item.seller_playbook = seller_playbook
     
     return matched_items
+
+def get_seller_playbook(seller_playbook_name:str):
+    base_path = os.path.dirname(__file__)
+    file_path = os.path.join(base_path, f'src/playbooks/excavator/{seller_playbook_name}')
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    playbooks = str(data)
+    return playbooks
 
 
 def _matches_brand(db_brand: str, filter_brand: str) -> bool:
