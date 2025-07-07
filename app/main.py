@@ -10,6 +10,7 @@ from groq import Groq
 import logging
 from typing import List
 from dotenv import load_dotenv
+import instructor
 
 # Optional imports
 try:
@@ -19,7 +20,13 @@ except ImportError:
     OPENAI_IMPORT_AVAILABLE = False
 
 # Import simplified models
-from src.models.core import Result, Excavator, AluminumSheet, Item, RequestNegotiate, Playbook, Buyer
+from src.models.core import (
+    Result, Excavator, AluminumSheet, Item, RequestNegotiate, Playbook, Buyer, ResultToAgent,
+    ResultData, ProductDetails, BuyerProfile, SellerPlaybookDetails, BuyerPlaybookDetails, ExcavatorOrAluminumSheet
+)
+
+# Import negotiation engine
+from src.crew_ai.crew import NegotiationEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -210,42 +217,71 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/negotiate")
-async def negotiate_endpoint(input: str):
+async def negotiate_endpoint(request: RequestNegotiate):
     """
     Process text input and return matched products
     """
     try:
 
-        request: RequestNegotiate = json.loads(input)
+        # Use instructor with Groq for structured output
+        instructor_client = instructor.from_groq(client)
 
-        response = openai_client.responses.parse(
+        playbook = get_playbook(request.buyer_id)
+
+        result = instructor_client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
-            input=[
-                {"role": "system","content":"you are a helpful assistant find the following things, if you do not find these things set them to null"},
-                {"role": "user","content":request.text_input},
+            messages=[
+                {"role": "system","content":"you are a helpful assistant. Does the user want to buy an excavator or an aluminum sheet?"},
+                {"role": "user","content":f"User input: {request.text_input} and buyer id: {request.buyer_id} and playbook of the buyer: {playbook} "},
             ],
-            text_format=Item
+            response_model=Item,
+            temperature=0.1
         )
-        result = response.output_parsed
+        print(str(result))
         item = get_item(result)
         filtered_items = get_filtered_items(item)
-        playbook = get_playbook(request.buyer_id)
+    
+        #integrate playbook 
         buyer_profile = get_buyer_profile(request.buyer_id)
-        if item.excavator:
-            result = Result(
+
+        # Create Result object based on the detected product type
+        if item and isinstance(item, Excavator):
+            # Handle excavator
+            simple_result = Result(
                 product_type="excavator",
                 text_input=request.text_input,
-                list_excavator=filtered_items,
+                list_excavator=filtered_items if filtered_items else [],
                 list_alu=[],
-                buyer_playbook=playbook,
-                buyer_profile=buyer_profile,
+                buyer_playbook=str(playbook) if playbook else "",
+                buyer_profile=str(buyer_profile) if buyer_profile else "",
+            )
+        elif item and isinstance(item, AluminumSheet):
+            # Handle aluminum sheet
+            simple_result = Result(
+                product_type="aluminum_sheet",
+                text_input=request.text_input,
+                list_excavator=[],
+                list_alu=filtered_items if filtered_items else [],
+                buyer_playbook=str(playbook) if playbook else "",
+                buyer_profile=str(buyer_profile) if buyer_profile else "",
+            )
+        else:
+            # Default case - no specific product detected
+            simple_result = Result(
+                product_type="unknown",
+                text_input=request.text_input,
+                list_excavator=[],
+                list_alu=[],
+                buyer_playbook=str(playbook) if playbook else "",
+                buyer_profile=str(buyer_profile) if buyer_profile else "",
             )
 
-#not yet implemented
-
-
+        # Convert to ResultToAgent format
+        result_to_agent = convert_result_to_agent(simple_result, request.buyer_id)
         
-        return []
+        negotiation_engine = NegotiationEngine()
+        output_agent =negotiation_engine.start()
+        return output_agent
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -254,20 +290,28 @@ async def negotiate_endpoint(input: str):
 def get_playbook(buyer_id):
     #Load playbooks from json file as list of Playbook
     base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'src/playbooks/briqs_buyer_playbook.json')
+    file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_buyer_playbook.json')
     with open(file_path, 'r') as f:
         data = json.load(f)
-    playbooks = [Playbook(**item) for item in data]
-    return playbooks.get(buyer_id)
+    playbooks = [Playbook(**item) for item in data["playbooks"]]
+    # Find playbook by buyer_id
+    for playbook in playbooks:
+        if playbook.buyer_id == buyer_id:
+            return playbook
+    return None
 
 def get_buyer_profile(buyer_id):
     #Load buyer profile from json file as list of Buyer
     base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'src/buyer_profile/briqs_buyer_profile.json')
+    file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_buyer_profile_1.json')
     with open(file_path, 'r') as f:
         data = json.load(f)
-    buyer_profile = [Buyer(**item) for item in data]
-    return buyer_profile.get(buyer_id)
+    buyer_profiles = [Buyer(**item) for item in data]
+    # Find buyer profile by buyer_id
+    for profile in buyer_profiles:
+        if profile.buyer_id == buyer_id:
+            return profile
+    return None
 
 def load_excavators() -> List[Excavator]:
     """Loads excavators from mock data."""
@@ -389,6 +433,113 @@ def get_item(item:Item):
     if item.aluminum_sheet:
         return item.aluminum_sheet
     return None
+
+
+def create_result_to_agent(product_type: str, text_input: str, buyer_id: int, 
+                          excavators: List[Excavator] = None, 
+                          aluminum_sheets: List[AluminumSheet] = None) -> ResultToAgent:
+    """
+    Helper function to create a ResultToAgent object directly from parameters.
+    
+    Args:
+        product_type: Type of product ("excavator", "aluminum_sheet", etc.)
+        text_input: Original text input from user
+        buyer_id: ID of the buyer
+        excavators: List of matched excavators (optional)
+        aluminum_sheets: List of matched aluminum sheets (optional)
+    
+    Returns:
+        ResultToAgent object with detailed playbook structure
+    """
+    # Create a Result object first
+    result = Result(
+        product_type=product_type,
+        text_input=text_input,
+        list_excavator=excavators or [],
+        list_alu=aluminum_sheets or [],
+        buyer_playbook="",
+        buyer_profile=""
+    )
+    
+    # Convert to ResultToAgent
+    return convert_result_to_agent(result, buyer_id)
+
+
+def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
+    """
+    Convert a simple Result object to a complex ResultToAgent object
+    by loading detailed playbook and buyer profile data.
+    """
+    try:
+        # Load detailed playbook data from knowledge base
+        base_path = os.path.dirname(__file__)
+        
+        # Load the combined playbook (seller + buyer details)
+        if result.product_type == "excavator":
+            combined_playbook_path = os.path.join(base_path, 'src/knowledge_base/excavator_seller1.json')
+        else:
+            # Default to excavator for now, can be extended for other product types
+            combined_playbook_path = os.path.join(base_path, 'src/knowledge_base/excavator_seller1.json')
+        
+        detailed_playbook = None
+        if os.path.exists(combined_playbook_path):
+            with open(combined_playbook_path, 'r') as f:
+                detailed_playbook = json.load(f)
+        
+        # Extract detailed structures from the loaded playbook
+        if detailed_playbook and "result" in detailed_playbook:
+            playbook_data = detailed_playbook["result"]
+            
+            # Extract product details
+            product_details = None
+            if "product_details" in playbook_data:
+                product_details = ProductDetails(**playbook_data["product_details"])
+            
+            # Extract buyer profile
+            buyer_profile = None
+            if "buyer_profile" in playbook_data:
+                buyer_profile = BuyerProfile(**playbook_data["buyer_profile"])
+            
+            # Create ResultData
+            result_data = ResultData(
+                product_type=result.product_type,
+                product_details=product_details,
+                buyer_profile=buyer_profile
+            )
+            
+            # Create ResultToAgent
+            return ResultToAgent(result=result_data)
+        
+        # Fallback: create a basic structure if detailed data is not available
+        logger.warning(f"Detailed playbook data not found, creating basic structure for buyer {buyer_id}")
+        
+        # Create basic buyer profile
+        buyer_profile = BuyerProfile(
+            credit_worthiness=8,  # Default value
+            recurring_customer=True  # Default value
+        )
+        
+        # Create basic result data
+        result_data = ResultData(
+            product_type=result.product_type,
+            product_details=None,  # No detailed product info available
+            buyer_profile=buyer_profile
+        )
+        
+        return ResultToAgent(result=result_data)
+        
+    except Exception as e:
+        logger.error(f"Error converting Result to ResultToAgent: {e}")
+        # Return a minimal structure on error
+        return ResultToAgent(
+            result=ResultData(
+                product_type=result.product_type,
+                product_details=None,
+                buyer_profile=BuyerProfile(credit_worthiness=5, recurring_customer=False)
+            )
+        )
+
+
 
 @app.get("/api/health")
 async def health_check():
