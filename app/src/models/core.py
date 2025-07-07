@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 
 class Excavator(BaseModel):
     id: Optional[UUID] = Field(default_factory=uuid4)
+    seller_id: Optional[int] = Field(default=None)
     name: Optional[str] = None
     seller_name: Optional[str] = None
     brand: Optional[str] = None
@@ -35,8 +36,10 @@ class ExcavatorDTO(BaseModel):
 
 class AluminumSheet(BaseModel):
     id: Optional[UUID] = Field(default_factory=uuid4)
+    seller_id: Optional[int] = Field(default=None)
     name: Optional[str] = None
     seller_name: Optional[str] = None
+    brand: Optional[str] = None
     price: Optional[float] = None
     availability: Optional[int] = None
     thickness_mm: Optional[float] = Field(default=None, description="Thickness in millimeters")
@@ -45,6 +48,7 @@ class AluminumSheet(BaseModel):
 
 class AluminumSheetDTO(BaseModel):
     name: Optional[str] = None
+    brand: Optional[str] = None
     price: Optional[float] = None
     availability: Optional[int] = None
     thickness_mm: Optional[float] = Field(default=None, description="Thickness in millimeters")

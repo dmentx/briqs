@@ -226,20 +226,19 @@ async def negotiate_endpoint(request: RequestNegotiate):
         # Use instructor with Groq for structured output
         instructor_client = instructor.from_groq(client)
 
-        playbook = get_playbook(request.buyer_id)
 
         result = instructor_client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[
                 {"role": "system","content":"you are a helpful assistant. Does the user want to buy an excavator or an aluminum sheet?"},
-                {"role": "user","content":f"User input: {request.text_input} and buyer id: {request.buyer_id} and playbook of the buyer: {playbook} "},
+                {"role": "user","content":f"User input: {request.text_input} and buyer id: {request.buyer_id} playbook should be null "},
             ],
             response_model=Item,
             temperature=0.1
         )
-        print(str(result))
         item = get_item(result)
         filtered_items = get_filtered_items(item)
+        return filtered_items
     
         #integrate playbook 
         buyer_profile = get_buyer_profile(request.buyer_id)
@@ -287,7 +286,7 @@ async def negotiate_endpoint(request: RequestNegotiate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def get_playbook(buyer_id):
+def get_buyer_playbook(buyer_id):
     #Load playbooks from json file as list of Playbook
     base_path = os.path.dirname(__file__)
     file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_buyer_playbook.json')
@@ -297,6 +296,19 @@ def get_playbook(buyer_id):
     # Find playbook by buyer_id
     for playbook in playbooks:
         if playbook.buyer_id == buyer_id:
+            return playbook
+    return None
+
+def get_seller_playbook(seller_id):
+    #Load playbooks from json file as list of Playbook
+    base_path = os.path.dirname(__file__)
+    file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_seller_playbook.json')
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    playbooks = [Playbook(**item) for item in data["playbooks"]]
+    # Find playbook by seller_id
+    for playbook in playbooks:
+        if playbook.seller_id == seller_id:
             return playbook
     return None
 
@@ -346,7 +358,10 @@ def load_aluminum_sheets() -> List[AluminumSheet]:
 
 def get_filtered_items(item):
     """
-    Filters items from mock data based on the attributes of the input item.
+    Filters items from mock data based on brand name only.
+    For excavators: uses 'brand' field
+    For aluminum sheets: uses 'brand' field, falls back to 'seller_name'
+    Supports both exact and partial matching.
     """
     if isinstance(item, Excavator):
         all_items = load_excavators()
@@ -355,25 +370,49 @@ def get_filtered_items(item):
     else:
         return []
 
-    # Get the fields from the input item that are not None
-    filter_criteria = item.model_dump(exclude_none=True)
+    # Extract only the brand from the filter item
+    filter_brand = getattr(item, 'brand', None)
     
-    # If no criteria are provided, return nothing
-    if not filter_criteria:
+    # If no brand criteria provided, return nothing
+    if not filter_brand:
         return []
 
     matched_items = []
     for db_item in all_items:
-        is_match = True
-        for key, value in filter_criteria.items():
-            db_value = getattr(db_item, key, None)
-            if db_value != value:
-                is_match = False
-                break
-        if is_match:
+        db_brand = getattr(db_item, 'brand', None)
+        
+        # For aluminum sheets, fall back to seller_name if no brand field
+        if not db_brand and isinstance(item, AluminumSheet):
+            db_brand = getattr(db_item, 'seller_name', None)
+        
+        # Check if brands match
+        if db_brand and _matches_brand(str(db_brand), str(filter_brand)):
             matched_items.append(db_item)
     
     return matched_items
+
+
+def _matches_brand(db_brand: str, filter_brand: str) -> bool:
+    """
+    Helper function to match brand names with flexible matching.
+    Supports both exact and partial case-insensitive matching.
+    """
+    db_brand_lower = db_brand.lower().strip()
+    filter_brand_lower = filter_brand.lower().strip()
+    
+    # Exact match
+    if db_brand_lower == filter_brand_lower:
+        return True
+    
+    # Partial match - check if filter is contained in db brand
+    if filter_brand_lower in db_brand_lower:
+        return True
+    
+    # Partial match - check if db brand is contained in filter
+    if db_brand_lower in filter_brand_lower:
+        return True
+    
+    return False
 
 
 def get_purchased_items(buyer_id: int) -> set[str]:
