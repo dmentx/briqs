@@ -496,8 +496,20 @@ class NegotiationEngine:
         product_type = self.result_to_agent.result.product_type if self.result_to_agent.result and self.result_to_agent.result.product_type else "product"
 
         history_str = "\n".join(negotiation_history)
-        with open('src/config_crewai/agents.yaml', 'r') as f:
-            agents_config = yaml.safe_load(f)
+        
+        # Get the absolute path to the project root (app directory)
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(current_file_dir))
+        agents_yaml_path = os.path.join(project_root, 'src', 'config_crewai', 'agents.yaml')
+        
+        try:
+            with open(agents_yaml_path, 'r') as f:
+                agents_config = yaml.safe_load(f)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Cannot find agents.yaml at {agents_yaml_path}. Current working directory: {os.getcwd()}. Error: {e}")
+        except Exception as e:
+            raise Exception(f"Error loading agents.yaml from {agents_yaml_path}: {e}")
+            
         mediator_agent = Agent(**agents_config['mediator_agent'], llm=self.llm_llama4, verbose=True)
 
         # The Mediator's task is very specific and detailed here.
@@ -555,8 +567,20 @@ class NegotiationEngine:
 
         # 1. Load configurations
         print("📚 Loading configurations...")
-        with open('src/config_crewai/agents.yaml', 'r') as f:
-            agents_config = yaml.safe_load(f)
+        
+        # Get the absolute path to the project root (app directory)
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(current_file_dir))
+        agents_yaml_path = os.path.join(project_root, 'src', 'config_crewai', 'agents.yaml')
+        
+        try:
+            with open(agents_yaml_path, 'r') as f:
+                agents_config = yaml.safe_load(f)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Cannot find agents.yaml at {agents_yaml_path}. Current working directory: {os.getcwd()}. Error: {e}")
+        except Exception as e:
+            raise Exception(f"Error loading agents.yaml from {agents_yaml_path}: {e}")
+            
         if not agents_config: 
             return
         print("✅ Configurations loaded.")

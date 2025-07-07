@@ -591,6 +591,7 @@ def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
     """
     try:
         seller_playbook_data = None
+        product_details = None  # Initialize at function level
         
         # Extract seller playbook from excavators if available
         if result.list_excavator and len(result.list_excavator) > 0:
@@ -604,7 +605,6 @@ def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
             if hasattr(aluminum, 'seller_playbook') and aluminum.seller_playbook:
                 seller_playbook_data = parse_seller_playbook(aluminum.seller_playbook)
         
-            product_details = None
         if seller_playbook_data:
             try:
                 # Let Pydantic handle the field aliasing automatically
