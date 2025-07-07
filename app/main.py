@@ -238,10 +238,10 @@ async def negotiate_endpoint(request: RequestNegotiate):
         )
         item = get_item(result)
         filtered_items = get_filtered_items(item)
-        return filtered_items
     
         #integrate playbook 
         buyer_profile = get_buyer_profile(request.buyer_id)
+        playbook = get_buyer_playbook(request.buyer_id)
 
         # Create Result object based on the detected product type
         if item and isinstance(item, Excavator):
@@ -277,6 +277,7 @@ async def negotiate_endpoint(request: RequestNegotiate):
 
         # Convert to ResultToAgent format
         result_to_agent = convert_result_to_agent(simple_result, request.buyer_id)
+        return result_to_agent
         
         negotiation_engine = NegotiationEngine()
         output_agent =negotiation_engine.start()
@@ -287,30 +288,27 @@ async def negotiate_endpoint(request: RequestNegotiate):
 
 
 def get_buyer_playbook(buyer_id):
-    #Load playbooks from json file as list of Playbook
-    base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_buyer_playbook.json')
-    with open(file_path, 'r') as f:
-        data = json.load(f)
-    playbooks = [Playbook(**item) for item in data["playbooks"]]
-    # Find playbook by buyer_id
-    for playbook in playbooks:
-        if playbook.buyer_id == buyer_id:
-            return playbook
-    return None
+    """Load buyer playbook from JSON file as BuyerPlaybookDetails"""
+    try:
+        base_path = os.path.dirname(__file__)
+        file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_buyer_playbook.json')
+        
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        # Find playbook by buyer_id
+        for playbook_data in data["playbooks"]:
+            if playbook_data.get("buyer_id") == buyer_id:
+                # Extract the playbook data without buyer_id for BuyerPlaybookDetails
+                buyer_playbook_data = {k: v for k, v in playbook_data.items() if k != "buyer_id"}
+                return BuyerPlaybookDetails(**buyer_playbook_data)
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error loading buyer playbook for buyer_id {buyer_id}: {e}")
+        return None
 
-def get_seller_playbook(seller_id):
-    #Load playbooks from json file as list of Playbook
-    base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_seller_playbook.json')
-    with open(file_path, 'r') as f:
-        data = json.load(f)
-    playbooks = [Playbook(**item) for item in data["playbooks"]]
-    # Find playbook by seller_id
-    for playbook in playbooks:
-        if playbook.seller_id == seller_id:
-            return playbook
-    return None
 
 def get_buyer_profile(buyer_id):
     #Load buyer profile from json file as list of Buyer
@@ -516,64 +514,113 @@ def create_result_to_agent(product_type: str, text_input: str, buyer_id: int,
     return convert_result_to_agent(result, buyer_id)
 
 
+def parse_seller_playbook(seller_playbook_str: str) -> dict:
+    """
+    Parse seller playbook from string - handles both actual data and filename references.
+    
+    Args:
+        seller_playbook_str: Either actual playbook data as string or filename
+        
+    Returns:
+        Dictionary with parsed playbook data or None if parsing fails
+    """
+    if not seller_playbook_str:
+        return None
+        
+    try:
+        # First, check if it looks like a filename
+        if seller_playbook_str.endswith('.json') and not seller_playbook_str.startswith('{'):
+            # It's a filename, load from combined playbooks
+            base_path = os.path.dirname(__file__)
+            combined_playbook_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_seller_playbooks_combined.json')
+            
+            if os.path.exists(combined_playbook_path):
+                with open(combined_playbook_path, 'r') as f:
+                    combined_playbooks = json.load(f)
+                
+                # Extract seller_id from filename (e.g., "briqs_seller_playbook_1.json" -> 1)
+                seller_id = None
+                if seller_playbook_str == 'briqs_seller_playbook_1.json':
+                    seller_id = 1
+                elif seller_playbook_str == 'briqs_seller_playbook_2.json':
+                    seller_id = 2
+                elif seller_playbook_str == 'briqs_seller_playbook_3.json':
+                    seller_id = 3
+                
+                # Find the matching playbook by seller_id
+                if seller_id:
+                    for playbook in combined_playbooks:
+                        if playbook.get('seller_id') == seller_id:
+                            return playbook
+            
+            logger.warning(f"Could not load playbook from filename: {seller_playbook_str}")
+            return None
+        
+        # It's actual playbook data, try to parse it
+        else:
+            try:
+                # Try ast.literal_eval first (safer for Python dict strings)
+                import ast
+                return ast.literal_eval(seller_playbook_str)
+            except (ValueError, SyntaxError):
+                try:
+                    # Fallback to JSON parsing
+                    return json.loads(seller_playbook_str)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse seller_playbook string as JSON: {e}")
+                    return None
+                    
+    except Exception as e:
+        logger.error(f"Error parsing seller playbook: {e}")
+        return None
+
+
 def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
     """
     Convert a simple Result object to a complex ResultToAgent object
-    by loading detailed playbook and buyer profile data.
+    by parsing the seller_playbook from the excavator objects.
     """
     try:
-        # Load detailed playbook data from knowledge base
-        base_path = os.path.dirname(__file__)
+        seller_playbook_data = None
         
-        # Load the combined playbook (seller + buyer details)
-        if result.product_type == "excavator":
-            combined_playbook_path = os.path.join(base_path, 'src/knowledge_base/excavator_seller1.json')
-        else:
-            # Default to excavator for now, can be extended for other product types
-            combined_playbook_path = os.path.join(base_path, 'src/knowledge_base/excavator_seller1.json')
+        # Extract seller playbook from excavators if available
+        if result.list_excavator and len(result.list_excavator) > 0:
+            excavator = result.list_excavator[0]  # Use first excavator's playbook
+            if hasattr(excavator, 'seller_playbook') and excavator.seller_playbook:
+                seller_playbook_data = parse_seller_playbook(excavator.seller_playbook)
         
-        detailed_playbook = None
-        if os.path.exists(combined_playbook_path):
-            with open(combined_playbook_path, 'r') as f:
-                detailed_playbook = json.load(f)
+        # Extract seller playbook from aluminum sheets if no excavator data
+        elif result.list_alu and len(result.list_alu) > 0:
+            aluminum = result.list_alu[0]  # Use first aluminum sheet's playbook
+            if hasattr(aluminum, 'seller_playbook') and aluminum.seller_playbook:
+                seller_playbook_data = parse_seller_playbook(aluminum.seller_playbook)
         
-        # Extract detailed structures from the loaded playbook
-        if detailed_playbook and "result" in detailed_playbook:
-            playbook_data = detailed_playbook["result"]
-            
-            # Extract product details
-            product_details = None
-            if "product_details" in playbook_data:
-                product_details = ProductDetails(**playbook_data["product_details"])
-            
-            # Extract buyer profile
-            buyer_profile = None
-            if "buyer_profile" in playbook_data:
-                buyer_profile = BuyerProfile(**playbook_data["buyer_profile"])
-            
-            # Create ResultData
-            result_data = ResultData(
-                product_type=result.product_type,
-                product_details=product_details,
-                buyer_profile=buyer_profile
-            )
-            
-            # Create ResultToAgent
-            return ResultToAgent(result=result_data)
+        product_details = None
+        if seller_playbook_data:
+            try:
+                # Let Pydantic handle the field aliasing automatically
+                seller_playbook_details = SellerPlaybookDetails(**seller_playbook_data)
+
+                buyer_playbook = get_buyer_playbook(buyer_id)
+                print(buyer_playbook)
+                
+                # Create product details with seller playbook
+                product_details = ProductDetails(
+                    seller_playbook=seller_playbook_details,
+                    buyer_playbook=buyer_playbook  # Will be loaded separately if needed
+                )
+            except Exception as mapping_error:
+                logger.warning(f"Failed to map seller playbook to structured format: {mapping_error}")
+                logger.warning(f"Seller playbook data keys: {list(seller_playbook_data.keys()) if seller_playbook_data else 'None'}")
+                product_details = None
         
-        # Fallback: create a basic structure if detailed data is not available
-        logger.warning(f"Detailed playbook data not found, creating basic structure for buyer {buyer_id}")
+        # Create basic buyer profile (can be enhanced later)
+        buyer_profile = get_buyer_profile(buyer_id)
         
-        # Create basic buyer profile
-        buyer_profile = BuyerProfile(
-            credit_worthiness=8,  # Default value
-            recurring_customer=True  # Default value
-        )
-        
-        # Create basic result data
+        # Create result data
         result_data = ResultData(
             product_type=result.product_type,
-            product_details=None,  # No detailed product info available
+            product_details=product_details,
             buyer_profile=buyer_profile
         )
         
@@ -589,6 +636,56 @@ def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
                 buyer_profile=BuyerProfile(credit_worthiness=5, recurring_customer=False)
             )
         )
+
+def get_buyer_profile(buyer_id: int) -> BuyerProfile:
+    """
+    Load buyer profile from JSON file, with fallback to default profile.
+    
+    Args:
+        buyer_id: The buyer ID to look for
+        
+    Returns:
+        BuyerProfile object, either matched by ID or default profile
+    """
+    try:
+        base_path = os.path.dirname(__file__)
+        file_path = os.path.join(base_path, 'src/playbooks/excavator/briqs_buyer_profile_1.json')
+        
+        if not os.path.exists(file_path):
+            logger.warning(f"Buyer profile file not found: {file_path}")
+            # Return default profile
+            return BuyerProfile(buyer_id=buyer_id, credit_worthiness=7, recurring_customer=False)
+        
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        buyer_profiles = [BuyerProfile(**item) for item in data]
+        logger.info(f"Loaded {len(buyer_profiles)} buyer profiles")
+        
+        # Find buyer profile by buyer_id
+        for profile in buyer_profiles:
+            if profile.buyer_id == buyer_id:
+                logger.info(f"Found buyer profile for buyer_id {buyer_id}")
+                return profile
+        
+        # If no exact match found, return the first profile but with the requested buyer_id
+        if buyer_profiles:
+            logger.info(f"No exact match for buyer_id {buyer_id}, using first profile as template")
+            first_profile = buyer_profiles[0]
+            return BuyerProfile(
+                buyer_id=buyer_id,
+                credit_worthiness=first_profile.credit_worthiness,
+                recurring_customer=first_profile.recurring_customer
+            )
+        
+        # Fallback: create default profile
+        logger.warning(f"No buyer profiles found, creating default for buyer_id {buyer_id}")
+        return BuyerProfile(buyer_id=buyer_id, credit_worthiness=7, recurring_customer=False)
+        
+    except Exception as e:
+        logger.error(f"Error loading buyer profile for buyer_id {buyer_id}: {e}")
+        # Return default profile on error
+        return BuyerProfile(buyer_id=buyer_id, credit_worthiness=5, recurring_customer=False)
 
 
 

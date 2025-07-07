@@ -121,7 +121,7 @@ class ExcavatorOrAluminumSheet(BaseModel):
 class ProductPricing(BaseModel):
     walk_away_price_usd: Optional[float] = Field(default=None, alias="Walk-Away-Price (USD)")
     target_price_usd: Optional[float] = Field(default=None, alias="Target Price (USD)")
-    starting_price: Optional[float] = Field(default=None, alias="Starting Price")
+    starting_price: Optional[float] = Field(default=None, alias="Starting Price (USD)")
 
 class RiskProfileDefinition(BaseModel):
     low_risk: Optional[str] = None
@@ -129,67 +129,82 @@ class RiskProfileDefinition(BaseModel):
     high_risk: Optional[str] = None
 
 class BuyerCriteria(BaseModel):
+    credit_worthiness: Optional[str] = Field(default=None, alias="Credit Worthiness")
+    history: Optional[str] = Field(default=None, alias="History")
     risk_profile_definition: Optional[RiskProfileDefinition] = None
 
 class ProductCriteria(BaseModel):
-    product: Optional[ProductPricing] = None
-    buyer: Optional[BuyerCriteria] = None
+    product: Optional[ProductPricing] = Field(default=None, alias="Product")
+    buyer: Optional[BuyerCriteria] = Field(default=None, alias="Buyer")
 
 class PaymentTerms(BaseModel):
-    goal: Optional[str] = None
-    fallback_position: Optional[str] = None
+    ideal: Optional[str] = Field(default=None, alias="Ideal")
+    fallback_position: Optional[str] = Field(default=None, alias="Fallback Position")
 
 class CollateralTerms(BaseModel):
-    goal: Optional[str] = None
-    fallback_position: Optional[str] = None
+    ideal: Optional[str] = Field(default=None, alias="Ideal")
+    fallback_position: Optional[str] = Field(default=None, alias="Fallback Position")
 
 class RiskBuyerTerms(BaseModel):
     payment_terms: Optional[PaymentTerms] = Field(default=None, alias="Payment Terms")
     collateral_for_payment_default: Optional[CollateralTerms] = Field(default=None, alias="Collateral for Payment Default")
+    warranties: Optional[CollateralTerms] = Field(default=None, alias="Warranties")
+
+class LowRiskBuyerTerms(BaseModel):
+    # For simple structure (playbook 1)
+    ideal: Optional[str] = Field(default=None, alias="Ideal")
+    fallback_position: Optional[str] = Field(default=None, alias="Fallback Position")
+    # For complex structure (playbooks 2, 3)
+    payment_terms: Optional[PaymentTerms] = Field(default=None, alias="Payment Terms")
 
 class IdealAcceptableTerms(BaseModel):
-    high_risk_buyer: Optional[RiskBuyerTerms] = None
-    medium_risk_buyer: Optional[RiskBuyerTerms] = None
-    low_risk_buyer: Optional[Dict[str, Any]] = None
+    high_risk_buyer: Optional[RiskBuyerTerms] = Field(default=None, alias="High risk buyer")
+    medium_risk_buyer: Optional[RiskBuyerTerms] = Field(default=None, alias="Medium risk buyer")
+    low_risk_buyer: Optional[LowRiskBuyerTerms] = Field(default=None, alias="Low risk buyer")
 
 class SellerTradables(BaseModel):
     primary_goal: Optional[str] = Field(default=None, alias="Primary Goal")
     give_low_cost_to_us: Optional[List[str]] = Field(default=None, alias="Give (Low-cost to us)")
     get_high_value_to_us: Optional[List[str]] = Field(default=None, alias="Get (High value to us)")
-    ideal_acceptable_terms: Optional[IdealAcceptableTerms] = Field(default=None, alias="Ideal & Acceptable Terms")
 
 class SellerPlaybookDetails(BaseModel):
     criteria: Optional[ProductCriteria] = Field(default=None, alias="Criteria")
     negotiation_rules: Optional[List[str]] = Field(default=None, alias="Negotiation rules")
     tradables: Optional[SellerTradables] = Field(default=None, alias="Tradables")
+    ideal_acceptable_terms: Optional[IdealAcceptableTerms] = Field(default=None, alias="Ideal & Acceptable Terms")
 
-class BuyerTermsDetail(BaseModel):
+class BuyerPriceTerms(BaseModel):
     target_purchase_price_usd: Optional[float] = Field(default=None, alias="Target Purchase Price (USD)")
     maximum_budget_usd: Optional[float] = Field(default=None, alias="Maximum Budget (USD)")
-    ideal: Optional[str] = None
-    fallback_position: Optional[str] = None
+    ideal: Optional[str] = Field(default=None, alias="Ideal")
+    fallback_position: Optional[str] = Field(default=None, alias="Fallback Position")
+
+class BuyerGeneralTerms(BaseModel):
+    ideal: Optional[str] = Field(default=None, alias="Ideal")
+    fallback_position: Optional[str] = Field(default=None, alias="Fallback Position")
 
 class BuyerIdealAcceptableTerms(BaseModel):
-    price: Optional[BuyerTermsDetail] = Field(default=None, alias="Price")
-    payment_terms: Optional[BuyerTermsDetail] = Field(default=None, alias="Payment Terms")
-    warranty: Optional[BuyerTermsDetail] = Field(default=None, alias="Warranty")
-    delivery: Optional[BuyerTermsDetail] = Field(default=None, alias="Delivery")
+    price: Optional[BuyerPriceTerms] = Field(default=None, alias="Price")
+    payment_terms: Optional[BuyerGeneralTerms] = Field(default=None, alias="Payment Terms")
+    warranty: Optional[BuyerGeneralTerms] = Field(default=None, alias="Warranty")
+    delivery: Optional[BuyerGeneralTerms] = Field(default=None, alias="Delivery")
 
 class BuyerTradables(BaseModel):
     primary_goal: Optional[str] = Field(default=None, alias="Primary Goal")
     get_high_value_to_us: Optional[List[str]] = Field(default=None, alias="Get (High value to us)")
     give_low_cost_to_us: Optional[List[str]] = Field(default=None, alias="Give (Low-cost to us)")
-    ideal_acceptable_terms: Optional[BuyerIdealAcceptableTerms] = Field(default=None, alias="Ideal & Acceptable Terms")
 
 class BuyerPlaybookDetails(BaseModel):
     negotiation_strategy: Optional[List[str]] = Field(default=None, alias="Negotiation Strategy")
     tradables: Optional[BuyerTradables] = Field(default=None, alias="Tradables")
+    ideal_acceptable_terms: Optional[BuyerIdealAcceptableTerms] = Field(default=None, alias="Ideal & Acceptable Terms")
 
 class ProductDetails(BaseModel):
     seller_playbook: Optional[SellerPlaybookDetails] = None
     buyer_playbook: Optional[BuyerPlaybookDetails] = None
 
 class BuyerProfile(BaseModel):
+    buyer_id: Optional[int] = Field(default=None, alias="Buyer ID")
     credit_worthiness: Optional[int] = Field(default=None, alias="Credit Worthiness")
     recurring_customer: Optional[bool] = Field(default=None, alias="Recurring Customer")
 
