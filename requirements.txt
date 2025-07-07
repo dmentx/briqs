@@ -170,7 +170,6 @@ python-multipart==0.0.20
 pytube==15.0.0
 pytz==2025.2
 pyvis==0.3.2
-pywin32==306
 pyyaml==6.0.2
 pyyaml-env-tag==1.1
 qdrant-client==1.14.3
