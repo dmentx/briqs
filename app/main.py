@@ -227,7 +227,7 @@ async def negotiate_endpoint(request: RequestNegotiate):
 
         result_to_agent = make_result_to_agent(request)
         
-        negotiation_engine = NegotiationEngine()
+        negotiation_engine = NegotiationEngine(result_to_agent)
         output_agent =negotiation_engine.start()
         return output_agent
 
@@ -313,7 +313,7 @@ def get_buyer_playbook(buyer_id):
                 return BuyerPlaybookDetails(**buyer_playbook_data)
         
         return None
-        
+
     except Exception as e:
         logger.error(f"Error loading buyer playbook for buyer_id {buyer_id}: {e}")
         return None
@@ -604,7 +604,7 @@ def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
             if hasattr(aluminum, 'seller_playbook') and aluminum.seller_playbook:
                 seller_playbook_data = parse_seller_playbook(aluminum.seller_playbook)
         
-        product_details = None
+            product_details = None
         if seller_playbook_data:
             try:
                 # Let Pydantic handle the field aliasing automatically
@@ -612,7 +612,7 @@ def convert_result_to_agent(result: Result, buyer_id: int) -> ResultToAgent:
 
                 buyer_playbook = get_buyer_playbook(buyer_id)
                 print(buyer_playbook)
-                
+            
                 # Create product details with seller playbook
                 product_details = ProductDetails(
                     seller_playbook=seller_playbook_details,

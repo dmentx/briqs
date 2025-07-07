@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+from ..models.core import ResultToAgent
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import BaseTool
 from langchain.tools import tool
@@ -19,8 +20,9 @@ class NegotiationEngine:
     A complete negotiation engine that handles buyer-seller negotiations with mediation.
     """
     
-    def __init__(self):
+    def __init__(self, result_to_agent: ResultToAgent):
         """Initialize the negotiation engine with LLM and configurations."""
+        self.result_to_agent = result_to_agent
         self.llm_llama4 = self._setup_llm()
         
     def _setup_llm(self):
@@ -36,33 +38,25 @@ class NegotiationEngine:
         )
 
 
-    def load_playbook(self, playbook_path):
-        """Generic function to load a playbook from a JSON file."""
-        try:
-            with open(playbook_path, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            print(f"⚠️  Playbook file not found: {playbook_path}")
-        except json.JSONDecodeError as e:
-            print(f"⚠️  Error parsing playbook JSON in {playbook_path}: {e}")
-        return None
 
 
-# --- Task Description Builders ---
 
-    def build_buyer_task_description(self, playbook, previous_message=None, mediation_proposal=None):
+    def build_buyer_task_description(self, previous_message=None, mediation_proposal=None):
         """Builds the buyer's task, including any mediator proposals."""
 
-        # Extract product type from playbook
-        product_type = playbook.get("result", {}).get("product_type", "PRODUCT").upper()
+        # Extract product type from playbook with null checks
+        product_type = self.result_to_agent.result.product_type if self.result_to_agent.result else "product"
         
-        # Extract buyer playbook from the nested structure
-        buyer_playbook = playbook.get("result", {}).get("product_details", {}).get("buyer_playbook", {})
+        # Extract buyer playbook from the nested structure with null checks
+        buyer_playbook = self.result_to_agent.result.product_details.buyer_playbook if (
+            self.result_to_agent.result and 
+            self.result_to_agent.result.product_details
+        ) else None
         
-        # Extract key sections from the buyer playbook
-        negotiation_strategy = buyer_playbook.get("Negotiation Strategy", [])
-        tradables = buyer_playbook.get("Tradables", {})
-        ideal_terms = buyer_playbook.get("Ideal & Acceptable Terms", {})
+        # Extract key sections from the buyer playbook with null checks
+        negotiation_strategy = buyer_playbook.negotiation_strategy if buyer_playbook else None
+        tradables = buyer_playbook.tradables if buyer_playbook else None
+        ideal_terms = buyer_playbook.ideal_acceptable_terms if buyer_playbook else None
         
         # Format Negotiation Strategy
         strategy_text = ""
@@ -74,12 +68,12 @@ class NegotiationEngine:
         # Format Tradables
         tradables_text = ""
         if tradables:
-            primary_goal = tradables.get("Primary Goal", "")
-            if primary_goal:
-                tradables_text += f"**PRIMARY GOAL:** {primary_goal}\n\n"
+            # Use the BuyerTradables model attribute for the primary goal
+            if tradables.primary_goal:
+                tradables_text += f"**PRIMARY GOAL:** {tradables.primary_goal}\n\n"
             
             # What you want to GET (high value to buyer)
-            get_items = tradables.get("Get (High value to us)", [])
+            get_items = tradables.get_high_value_to_us
             if get_items:
                 tradables_text += "**WHAT YOU WANT TO GET (High value to you):**\n"
                 for item in get_items:
@@ -87,7 +81,7 @@ class NegotiationEngine:
                 tradables_text += "\n"
             
             # What you're willing to GIVE (low cost to buyer)  
-            give_items = tradables.get("Give (Low-cost to us)", [])
+            give_items = tradables.give_low_cost_to_us
             if give_items:
                 tradables_text += "**WHAT YOU'RE WILLING TO GIVE (Low-cost to you):**\n"
                 for item in give_items:
@@ -100,13 +94,13 @@ class NegotiationEngine:
             terms_text = "**IDEAL & ACCEPTABLE TERMS:**\n\n"
             
             # Price terms
-            price_terms = ideal_terms.get("Price", {})
+            price_terms = ideal_terms.price
             if price_terms:
                 terms_text += "**PRICE:**\n"
-                target_price = price_terms.get("Target Purchase Price (USD)")
-                max_budget = price_terms.get("Maximum Budget (USD)")
-                ideal = price_terms.get("Ideal")
-                fallback = price_terms.get("Fallback Position")
+                target_price = price_terms.target_purchase_price_usd
+                max_budget = price_terms.maximum_budget_usd
+                ideal = price_terms.ideal
+                fallback = price_terms.fallback_position
                 
                 if target_price:
                     terms_text += f"• Target Purchase Price: ${target_price:,}\n"
@@ -119,11 +113,11 @@ class NegotiationEngine:
                 terms_text += "\n"
             
             # Payment terms
-            payment_terms = ideal_terms.get("Payment Terms", {})
+            payment_terms = ideal_terms.payment_terms
             if payment_terms:
                 terms_text += "**PAYMENT TERMS:**\n"
-                ideal = payment_terms.get("Ideal")
-                fallback = payment_terms.get("Fallback Position")
+                ideal = payment_terms.ideal
+                fallback = payment_terms.fallback_position
                 
                 if ideal:
                     terms_text += f"• Ideal: {ideal}\n"
@@ -132,11 +126,11 @@ class NegotiationEngine:
                 terms_text += "\n"
             
             # Warranty terms
-            warranty_terms = ideal_terms.get("Warranty", {})
+            warranty_terms = ideal_terms.warranty
             if warranty_terms:
                 terms_text += "**WARRANTY:**\n"
-                ideal = warranty_terms.get("Ideal")
-                fallback = warranty_terms.get("Fallback Position")
+                ideal = warranty_terms.ideal
+                fallback = warranty_terms.fallback_position
                 
                 if ideal:
                     terms_text += f"• Ideal: {ideal}\n"
@@ -145,11 +139,11 @@ class NegotiationEngine:
                 terms_text += "\n"
             
             # Delivery terms
-            delivery_terms = ideal_terms.get("Delivery", {})
+            delivery_terms = ideal_terms.delivery
             if delivery_terms:
                 terms_text += "**DELIVERY:**\n"
-                ideal = delivery_terms.get("Ideal")
-                fallback = delivery_terms.get("Fallback Position")
+                ideal = delivery_terms.ideal
+                fallback = delivery_terms.fallback_position
                 
                 if ideal:
                     terms_text += f"• Ideal: {ideal}\n"
@@ -206,27 +200,33 @@ class NegotiationEngine:
             {base_description}
             """
 
-    def build_seller_task_description(self, playbook, buyer_message, mediation_proposal=None):
+    def build_seller_task_description(self, buyer_message, mediation_proposal=None):
         """Builds the seller's task, including any mediator proposals."""
-
-        # Extract product type from playbook
-        product_type = playbook.get("result", {}).get("product_type", "PRODUCT").upper()
         
-        # Extract buyer profile from playbook
-        buyer_profile = playbook.get("result", {}).get("buyer_profile", {})
-        credit_worthiness = buyer_profile.get("Credit Worthiness", "N/A")
-        recurring_customer = buyer_profile.get("Recurring Customer", False)
+        # Get the seller playbook from the main data model with null checks
+        playbook = self.result_to_agent.result.product_details.seller_playbook if (
+            self.result_to_agent.result and 
+            self.result_to_agent.result.product_details
+        ) else None
+
+        # Extract product type from playbook with null checks
+        product_type = self.result_to_agent.result.product_type if self.result_to_agent.result else "product"
+        
+        # Extract buyer profile from playbook with null checks
+        buyer_profile = self.result_to_agent.result.buyer_profile if self.result_to_agent.result else None
+        credit_worthiness = buyer_profile.credit_worthiness if buyer_profile else "Unknown"
+        recurring_customer = buyer_profile.recurring_customer if buyer_profile else False
         
         # Format buyer profile description
         buyer_profile_desc = f"Credit Worthiness: {credit_worthiness}, Recurring Customer: {'Yes' if recurring_customer else 'No'}"
 
-        # Extract seller playbook from the nested structure
-        seller_playbook = playbook.get("result", {}).get("product_details", {}).get("seller_playbook", {})
+        # Extract seller playbook from the nested structure with null checks
+        seller_playbook = playbook
         
-        # Extract key sections from the seller playbook
-        criteria = seller_playbook.get("Criteria", {})
-        negotiation_rules = seller_playbook.get("Negotiation rules", [])
-        tradables = seller_playbook.get("Tradables", {})
+        # Extract key sections from the seller playbook with null checks
+        criteria = seller_playbook.criteria if seller_playbook else None
+        negotiation_rules = seller_playbook.negotiation_rules if seller_playbook else None
+        tradables = seller_playbook.tradables if seller_playbook else None
         
         # Format Criteria section
         criteria_text = ""
@@ -234,11 +234,11 @@ class NegotiationEngine:
             criteria_text = "**PRICING CRITERIA:**\n"
             
             # Product pricing
-            product_criteria = criteria.get("Product", {})
+            product_criteria = criteria.product
             if product_criteria:
-                walk_away_price = product_criteria.get("Walk-Away-Price (USD)")
-                target_price = product_criteria.get("Target Price (USD)")
-                starting_price = product_criteria.get("Starting Price")
+                walk_away_price = product_criteria.walk_away_price_usd
+                target_price = product_criteria.target_price_usd
+                starting_price = product_criteria.starting_price
                 
                 if walk_away_price:
                     criteria_text += f"• Walk-Away-Price: ${walk_away_price:,}\n"
@@ -249,13 +249,18 @@ class NegotiationEngine:
                 criteria_text += "\n"
             
             # Buyer risk profile definitions
-            buyer_criteria = criteria.get("Buyer", {})
-            risk_definitions = buyer_criteria.get("risk_profile_definition", {})
-            if risk_definitions:
-                criteria_text += "**BUYER RISK PROFILE DEFINITIONS:**\n"
-                for risk_level, definition in risk_definitions.items():
-                    criteria_text += f"• {risk_level.replace('_', ' ').title()}: {definition}\n"
-                criteria_text += "\n"
+            buyer_criteria = criteria.buyer
+            if buyer_criteria:
+                risk_definitions = buyer_criteria.risk_profile_definition
+                if risk_definitions:
+                    criteria_text += "**BUYER RISK PROFILE DEFINITIONS:**\n"
+                    if risk_definitions.high_risk:
+                        criteria_text += f"• High Risk: {risk_definitions.high_risk}\n"
+                    if risk_definitions.medium_risk:
+                        criteria_text += f"• Medium Risk: {risk_definitions.medium_risk}\n"
+                    if risk_definitions.low_risk:
+                        criteria_text += f"• Low Risk: {risk_definitions.low_risk}\n"
+                    criteria_text += "\n"
         
         # Format Negotiation Rules
         rules_text = ""
@@ -268,12 +273,12 @@ class NegotiationEngine:
         # Format Tradables
         tradables_text = ""
         if tradables:
-            primary_goal = tradables.get("Primary Goal", "")
-            if primary_goal:
-                tradables_text += f"**PRIMARY GOAL:** {primary_goal}\n\n"
+            # Use the SellerTradables model attribute for the primary goal
+            if tradables.primary_goal:
+                tradables_text += f"**PRIMARY GOAL:** {tradables.primary_goal}\n\n"
             
             # What you're willing to GIVE (low cost to seller)
-            give_items = tradables.get("Give (Low-cost to us)", [])
+            give_items = tradables.give_low_cost_to_us
             if give_items:
                 tradables_text += "**WHAT YOU'RE WILLING TO GIVE (Low-cost to you):**\n"
                 for item in give_items:
@@ -281,7 +286,7 @@ class NegotiationEngine:
                 tradables_text += "\n"
             
             # What you want to GET (high value to seller)
-            get_items = tradables.get("Get (High value to us)", [])
+            get_items = tradables.get_high_value_to_us
             if get_items:
                 tradables_text += "**WHAT YOU WANT TO GET (High value to you):**\n"
                 for item in get_items:
@@ -289,62 +294,64 @@ class NegotiationEngine:
                 tradables_text += "\n"
             
             # Ideal & Acceptable Terms by risk level
-            ideal_terms = tradables.get("Ideal & Acceptable Terms", {})
+            ideal_terms = seller_playbook.ideal_acceptable_terms if seller_playbook else None
             if ideal_terms:
                 tradables_text += "**IDEAL & ACCEPTABLE TERMS BY BUYER RISK LEVEL:**\n\n"
                 
                 # High risk buyer terms
-                high_risk_terms = ideal_terms.get("High risk buyer", {})
+                high_risk_terms = ideal_terms.high_risk_buyer
                 if high_risk_terms:
                     tradables_text += "**HIGH RISK BUYER:**\n"
                     
-                    payment_terms = high_risk_terms.get("Payment Terms", {})
+                    payment_terms = high_risk_terms.payment_terms
                     if payment_terms:
                         tradables_text += "• Payment Terms:\n"
-                        goal = payment_terms.get("Goal")
-                        fallback = payment_terms.get("Fallback Position")
-                        if goal:
-                            tradables_text += f"  - Goal: {goal}\n"
-                        if fallback:
-                            tradables_text += f"  - Fallback: {fallback}\n"
+                        if payment_terms.ideal:
+                            tradables_text += f"  - Ideal: {payment_terms.ideal}\n"
+                        if payment_terms.fallback_position:
+                            tradables_text += f"  - Fallback: {payment_terms.fallback_position}\n"
                     
-                    collateral_terms = high_risk_terms.get("Collateral for Payment Default", {})
+                    collateral_terms = high_risk_terms.collateral_for_payment_default
                     if collateral_terms:
                         tradables_text += "• Collateral for Payment Default:\n"
-                        goal = collateral_terms.get("Goal")
-                        fallback = collateral_terms.get("Fallback Position")
-                        if goal:
-                            tradables_text += f"  - Goal: {goal}\n"
-                        if fallback:
-                            tradables_text += f"  - Fallback: {fallback}\n"
+                        if collateral_terms.ideal:
+                            tradables_text += f"  - Ideal: {collateral_terms.ideal}\n"
+                        if collateral_terms.fallback_position:
+                            tradables_text += f"  - Fallback: {collateral_terms.fallback_position}\n"
                     tradables_text += "\n"
                 
                 # Medium risk buyer terms
-                medium_risk_terms = ideal_terms.get("Medium risk buyer", {})
+                medium_risk_terms = ideal_terms.medium_risk_buyer
                 if medium_risk_terms:
                     tradables_text += "**MEDIUM RISK BUYER:**\n"
                     
-                    payment_terms = medium_risk_terms.get("Payment Terms", {})
+                    payment_terms = medium_risk_terms.payment_terms
                     if payment_terms:
                         tradables_text += "• Payment Terms:\n"
-                        goal = payment_terms.get("Goal")
-                        fallback = payment_terms.get("Fallback Position")
-                        if goal:
-                            tradables_text += f"  - Goal: {goal}\n"
-                        if fallback:
-                            tradables_text += f"  - Fallback: {fallback}\n"
+                        if payment_terms.ideal:
+                            tradables_text += f"  - Ideal: {payment_terms.ideal}\n"
+                        if payment_terms.fallback_position:
+                            tradables_text += f"  - Fallback: {payment_terms.fallback_position}\n"
                     tradables_text += "\n"
                 
                 # Low risk buyer terms
-                low_risk_terms = ideal_terms.get("Low risk buyer", {})
+                low_risk_terms = ideal_terms.low_risk_buyer
                 if low_risk_terms:
                     tradables_text += "**LOW RISK BUYER:**\n"
-                    goal = low_risk_terms.get("Goal")
-                    fallback = low_risk_terms.get("Fallback Position")
-                    if goal:
-                        tradables_text += f"• Goal: {goal}\n"
-                    if fallback:
-                        tradables_text += f"• Fallback: {fallback}\n"
+                    # This model can have a simple or complex structure
+                    # Simple structure
+                    if low_risk_terms.ideal:
+                        tradables_text += f"• Ideal: {low_risk_terms.ideal}\n"
+                    if low_risk_terms.fallback_position:
+                        tradables_text += f"• Fallback Position: {low_risk_terms.fallback_position}\n"
+                    
+                    # Complex structure
+                    if low_risk_terms.payment_terms:
+                        tradables_text += "• Payment Terms:\n"
+                        if low_risk_terms.payment_terms.ideal:
+                            tradables_text += f"  - Ideal: {low_risk_terms.payment_terms.ideal}\n"
+                        if low_risk_terms.payment_terms.fallback_position:
+                            tradables_text += f"  - Fallback Position: {low_risk_terms.payment_terms.fallback_position}\n"
                     tradables_text += "\n"
 
         base_description = f"""
@@ -478,10 +485,15 @@ class NegotiationEngine:
             print(f"⚖️  JSON parsing failed: {e}")
             return '{"status": "CONTINUE", "reason": "Adjudicator response parsing failed"}'
 
-    def run_final_mediation(self, negotiation_history: list[str], combined_playbook: dict, backup_terms: dict) -> dict:
+    def run_final_mediation(self, negotiation_history: list[str]) -> dict:
         """Invokes a Mediator agent to analyze a failed negotiation and propose a final compromise."""
         print("\n" + "="*20 + " MEDIATION STAGE " + "="*20)
         print("⚖️  The main negotiation failed. A Chief Mediator is being called in...")
+
+        # Extract necessary data from result_to_agent
+        buyer_playbook = self.result_to_agent.result.product_details.buyer_playbook if self.result_to_agent.result and self.result_to_agent.result.product_details else None
+        seller_playbook = self.result_to_agent.result.product_details.seller_playbook if self.result_to_agent.result and self.result_to_agent.result.product_details else None
+        product_type = self.result_to_agent.result.product_type if self.result_to_agent.result and self.result_to_agent.result.product_type else "product"
 
         history_str = "\n".join(negotiation_history)
         with open('src/config_crewai/agents.yaml', 'r') as f:
@@ -491,13 +503,18 @@ class NegotiationEngine:
         # The Mediator's task is very specific and detailed here.
         mediation_task = Task(
             description=f"""
-            You are a mediator for a failed negotiation. Your task is to propose a final, acceptable compromise.
+            You are a mediator for a failed negotiation for {product_type}. Your task is to propose a final, acceptable compromise.
             
-            **Combined Playbook (Buyer & Seller Goals):**
-            {json.dumps(combined_playbook, indent=2)}
+            **Buyer's Key Goals:**
+            - Negotiation Strategy: {buyer_playbook.negotiation_strategy if buyer_playbook.negotiation_strategy else 'Not specified'}
+            - Primary Goal: {buyer_playbook.tradables.primary_goal if buyer_playbook.tradables and buyer_playbook.tradables.primary_goal else 'Not specified'}
+            - Target Price: {buyer_playbook.ideal_acceptable_terms.price.target_purchase_price_usd if buyer_playbook.ideal_acceptable_terms and buyer_playbook.ideal_acceptable_terms.price and buyer_playbook.ideal_acceptable_terms.price.target_purchase_price_usd else 'Not specified'}
+            - Max Budget: {buyer_playbook.ideal_acceptable_terms.price.maximum_budget_usd if buyer_playbook.ideal_acceptable_terms and buyer_playbook.ideal_acceptable_terms.price and buyer_playbook.ideal_acceptable_terms.price.maximum_budget_usd else 'Not specified'}
 
-            **Backup Terms (for reference):**
-            {json.dumps(backup_terms, indent=2)}
+            **Seller's Key Goals:**
+            - Primary Goal: {seller_playbook.tradables.primary_goal if seller_playbook.tradables and seller_playbook.tradables.primary_goal else 'Not specified'}
+            - Walk-Away Price: {seller_playbook.criteria.product.walk_away_price_usd if seller_playbook.criteria and seller_playbook.criteria.product and seller_playbook.criteria.product.walk_away_price_usd else 'Not specified'}
+            - Target Price: {seller_playbook.criteria.product.target_price_usd if seller_playbook.criteria and seller_playbook.criteria.product and seller_playbook.criteria.product.target_price_usd else 'Not specified'}
 
             **Full Negotiation History:**
             ---
@@ -538,11 +555,9 @@ class NegotiationEngine:
 
         # 1. Load configurations
         print("📚 Loading configurations...")
-        combined_playbook = self.load_playbook("src/knowledge_base/excavator_seller1.json")
-        backup_terms = self.load_playbook("src/knowledge_base/briqs_backup_terms_excavator.json")
         with open('src/config_crewai/agents.yaml', 'r') as f:
             agents_config = yaml.safe_load(f)
-        if not all([combined_playbook, backup_terms, agents_config]): 
+        if not agents_config: 
             return
         print("✅ Configurations loaded.")
 
@@ -558,7 +573,7 @@ class NegotiationEngine:
         
         # Opening Move
         print("\n--- ROUND 1 ---")
-        task = Task(description=self.build_buyer_task_description(combined_playbook), agent=buyer_agent, expected_output="A JSON object with your offer and justification.")
+        task = Task(description=self.build_buyer_task_description(), agent=buyer_agent, expected_output="A JSON object with your offer and justification.")
         last_message = Crew(agents=[buyer_agent], tasks=[task]).kickoff()
         negotiation_history.append(f"BUYER: {last_message}")
         print("\n" + "="*20 + " BUYER'S RESPONSE " + "="*20); print(last_message)
@@ -570,7 +585,7 @@ class NegotiationEngine:
             last_buyer_message = last_message # Store the buyer's message for adjudication
 
             # Seller's Turn
-            task = Task(description=self.build_seller_task_description(combined_playbook, last_buyer_message), agent=seller_agent, expected_output="A JSON object with your counter-offer and justification.")
+            task = Task(description=self.build_seller_task_description(last_buyer_message), agent=seller_agent, expected_output="A JSON object with your counter-offer and justification.")
             seller_response = Crew(agents=[seller_agent], tasks=[task]).kickoff()
             negotiation_history.append(f"SELLER: {seller_response}")
             print("\n" + "="*20 + " SELLER'S RESPONSE " + "="*20); print(seller_response)
@@ -607,7 +622,7 @@ class NegotiationEngine:
                 break
 
             # Buyer's Turn to respond to the counter-offer
-            task = Task(description=self.build_buyer_task_description(combined_playbook, seller_response), agent=buyer_agent, expected_output="A JSON object with your offer and justification.")
+            task = Task(description=self.build_buyer_task_description(seller_response), agent=buyer_agent, expected_output="A JSON object with your offer and justification.")
             last_message = Crew(agents=[buyer_agent], tasks=[task]).kickoff()
             negotiation_history.append(f"BUYER: {last_message}")
             print("\n" + "="*20 + " BUYER'S RESPONSE " + "="*20); print(last_message)
@@ -615,7 +630,7 @@ class NegotiationEngine:
         # 3. Mediation Phase (if no deal was reached in the main loop)
         if not deal_reached:
             print("\n🏁 Main negotiation concluded without a deal.")
-            mediation_result = self.run_final_mediation(negotiation_history, combined_playbook, backup_terms)
+            mediation_result = self.run_final_mediation(negotiation_history)
             
             if mediation_result and mediation_result.get("decision") == "PROPOSE_COMPROMISE":
                 # This part of your code for the final mediation round is already correct.
@@ -625,12 +640,12 @@ class NegotiationEngine:
 
                 print("\n--- FINAL MEDIATION ROUND ---")
                 
-                final_buyer_task = Task(description=self.build_buyer_task_description(combined_playbook, "\n\nThe Mediator has made a final proposal. You should really consider accepting it very seriously.\n\n Mediator's offer: \n\n", formatted_proposal), agent=buyer_agent, expected_output="A JSON object with your final offer.")
+                final_buyer_task = Task(description=self.build_buyer_task_description("\n\nThe Mediator has made a final proposal. You should really consider accepting it very seriously.\n\n Mediator's offer: \n\n", formatted_proposal), agent=buyer_agent, expected_output="A JSON object with your final offer.")
                 buyer_final_word = Crew(agents=[buyer_agent], tasks=[final_buyer_task]).kickoff()
                 negotiation_history.append(f"BUYER (Final Word): {buyer_final_word}")
                 print("\n" + "="*20 + " BUYER'S FINAL WORD " + "="*20); print(buyer_final_word)
 
-                final_seller_task = Task(description=self.build_seller_task_description(combined_playbook, "\n\nYou will receive the buyer's final word. You should really consider accepting it very seriously. The buyer has made a final offer based on a mediation proposal, which is considered to be fair for both parties.\n\n" + str(buyer_final_word) + "\n\nMeditator's offer:\n\n", formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final decision.")
+                final_seller_task = Task(description=self.build_seller_task_description("\n\nYou will receive the buyer's final word. You should really consider accepting it very seriously. The buyer has made a final offer based on a mediation proposal, which is considered to be fair for both parties.\n\n" + str(buyer_final_word) + "\n\nMeditator's offer:\n\n", formatted_proposal), agent=seller_agent, expected_output="A JSON object with your final decision.")
                 seller_final_word = Crew(agents=[seller_agent], tasks=[final_seller_task]).kickoff()
                 negotiation_history.append(f"SELLER (Final Word): {seller_final_word}")
                 print("\n" + "="*20 + " SELLER'S FINAL WORD " + "="*20); print(seller_final_word)
@@ -711,9 +726,3 @@ class NegotiationEngine:
     def start(self, max_rounds=4):
         """Start the negotiation process."""
         return self.run_negotiation(max_rounds)
-
-
-if __name__ == "__main__":
-    # Example usage
-    engine = NegotiationEngine()
-    engine.start()
