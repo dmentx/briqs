@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
 from datetime import datetime
@@ -198,7 +198,7 @@ async def featured_products_endpoint(buyer_id: int):
         raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
 
 @app.post("/api/transcribe")
-async def transcribe_endpoint(file: UploadFile = File(...)):
+async def transcribe_endpoint(file: UploadFile = File(...), buyer_id: int = Form(...)):
     """
     Transcribe audio file and return matched products
     """
@@ -212,7 +212,9 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
         # Transcribe audio
         transcription_result = transcribe_audio(compressed_audio, file.filename)
         text_from_audio = transcription_result["text"]
-        return text_from_audio
+        request = RequestNegotiate(text_input=text_from_audio, buyer_id=buyer_id)
+        result_to_agent = make_result_to_agent(request)
+        return [text_from_audio, result_to_agent]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -221,6 +223,18 @@ async def negotiate_endpoint(request: RequestNegotiate):
     """
     Process text input and return matched products
     """
+    try:
+
+        result_to_agent = make_result_to_agent(request)
+        
+        negotiation_engine = NegotiationEngine()
+        output_agent =negotiation_engine.start()
+        return output_agent
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def make_result_to_agent(request: RequestNegotiate):
     try:
 
         # Use instructor with Groq for structured output
@@ -278,11 +292,6 @@ async def negotiate_endpoint(request: RequestNegotiate):
         # Convert to ResultToAgent format
         result_to_agent = convert_result_to_agent(simple_result, request.buyer_id)
         return result_to_agent
-        
-        negotiation_engine = NegotiationEngine()
-        output_agent =negotiation_engine.start()
-        return output_agent
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
