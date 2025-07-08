@@ -10,6 +10,7 @@ A buyer can specify their need for 100,000 stainless steel screws or 500 rolls o
  
 To stress-test the power of our negotiation engine, our prototype even handles complex, high-value assets. For example, a buyer can define their parameters for a small excavator - price, financing terms, delivery - and our agents will find and structure the optimal deal. This demonstrates our platform's flexibility to move from high-frequency commodities to any negotiated B2B transaction.
 
+![Briqs Platform Overview](image(1).png)
 ## Project Structure
 
 This repository contains both backend and frontend components:
